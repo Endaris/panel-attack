@@ -340,7 +340,7 @@ function select_screen.main()
 
   add_client_data(cursor_data[1].state)
 
-  if select_screen.character_select_mode ~= "1p_vs_yourself" then
+  if select_screen.character_select_mode ~= "1p_vs_yourself" or select_screen.character_select_mode ~= "1p_vs_cpu" then
     if global_op_state ~= nil then
       cursor_data[2].state = shallowcpy(global_op_state)
       if select_screen.character_select_mode ~= "2p_local_vs" then
@@ -1306,6 +1306,31 @@ function select_screen.main()
       if not do_messages() then
         return main_dumb_transition, {main_select_mode, loc("ss_disconnect").."\n\n"..loc("ss_return"), 60, 300}
       end
+    elseif cursor_data[1].state.ready and select_screen.character_select_mode == "1p_vs_cpu" then
+      P1 = Stack(1, "vs", cursor_data[1].state.panels_dir, cursor_data[1].state.level, cursor_data[1].state.character)
+      P2 = Stack(2, "vs", cursor_data[1].state.panels_dir, cursor_data[1].state.level, cursor_data[1].state.character)
+      P1.enable_analytics = true
+      P2.enable_analytics = true
+      P1.garbage_target = P2
+      P2.garbage_target = P1   
+      current_stage = cursor_data[1].state.stage
+      stage_loader_load(current_stage)
+      stage_loader_wait()
+      move_stack(P2,2)
+      -- copy pasted over from above cause I (Endaris) really don't care
+      -- TODO: this does not correctly implement starting configurations.
+      -- Starting configurations should be identical for visible blocks, and
+      -- they should not be completely flat.
+      --
+      -- In general the block-generation logic should be the same as the server's, so
+      -- maybe there should be only one implementation.
+      make_local_panels(P1, "000000")
+      make_local_gpanels(P1, "000000")
+      make_local_panels(P2, "000000")
+      make_local_gpanels(P2, "000000")
+      P1:starting_state()
+      P2:starting_state()
+      return main_dumb_transition, {main_local_vs_cpu, "", 0, 0}
     end
   end
 end

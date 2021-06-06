@@ -1,3 +1,5 @@
+io.stdout:setvbuf("no")
+
 socket = require("socket")
 json = require("dkjson")
 require("util")
@@ -18,6 +20,9 @@ require("mainloop")
 require("sound")
 require("timezones")
 require("gen_panels")
+require("cpu1")
+  
+  
 
 global_canvas = love.graphics.newCanvas(canvas_width, canvas_height)
 

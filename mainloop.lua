@@ -11,7 +11,7 @@ local wait, resume = coroutine.yield, coroutine.resume
 local main_endless, make_main_puzzle, main_net_vs_setup,
   main_config_input, main_select_puzz,
   main_local_vs_setup, main_set_name, main_local_vs_yourself_setup,
-  main_options, main_music_test, 
+  main_options, main_music_test, main_local_vs_cpu_setup,
   main_replay_browser, exit_game
 -- main_select_mode, main_dumb_transition, main_net_vs, main_net_vs_lobby, main_local_vs_yourself, main_local_vs, main_replay_endless, main_replay_puzzle, main_replay_vs are not local since they are also used elsewhere
 
@@ -124,6 +124,7 @@ do
         {loc("mm_1_puzzle"), main_select_puzz},
         {loc("mm_1_time"), main_select_speed_99, {main_time_attack}},
         {loc("mm_1_vs"), main_local_vs_yourself_setup},
+        {loc("mm_1_cpu"), main_local_vs_cpu_setup},
         --{loc("mm_2_vs_online", "burke.ro"), main_net_vs_setup, {"burke.ro"}},
         {loc("mm_2_vs_online", "Jon's server"), main_net_vs_setup, {"18.188.43.50"}},
         --{loc("mm_2_vs_online", "betaserver.panelattack.com"), main_net_vs_setup, {"betaserver.panelattack.com"}},
@@ -920,6 +921,55 @@ function main_local_vs()
         if not P1.game_over and not P2.game_over then
           P1:local_run()
           P2:local_run()
+          P1:handle_pause()
+          P2:handle_pause()
+        end
+      end)
+    local winSFX = nil
+    if P1.game_over and P2.game_over and P1.CLOCK == P2.CLOCK then
+      end_text = loc("ss_draw")
+    elseif P1.game_over and P1.CLOCK <= P2.CLOCK then
+      winSFX = P2:pick_win_sfx()
+      op_win_count = op_win_count + 1
+      end_text = loc("pl_2_win")
+    elseif P2.game_over and P2.CLOCK <= P1.CLOCK then
+      winSFX = P1:pick_win_sfx()
+      my_win_count = my_win_count + 1
+      end_text = loc("pl_1_win")
+    end
+    if end_text then
+      analytics.game_ends()
+      return main_dumb_transition, {select_screen.main, end_text, 45, -1, winSFX}
+    end
+  end
+end
+
+function main_local_vs_cpu_setup()
+  currently_spectating = false
+  my_name = config.name or "Player 1"
+  op_name = "CPU"
+  op_state = nil
+  select_screen.character_select_mode = "1p_vs_cpu"
+  return select_screen.main
+end
+
+function main_local_vs_cpu()
+  -- TODO: replay!
+  use_current_stage()
+  pick_use_music_from()
+  local end_text = nil
+  while true do
+    if game_is_paused then
+      draw_pause()
+    else
+      P1:render()
+      P2:render()
+    end
+    wait()
+    variable_step(function()
+        if not P1.game_over and not P2.game_over then
+          P1:local_run()
+          P2:cpu_run()
           P1:handle_pause()
           P2:handle_pause()
         end
