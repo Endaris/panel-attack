@@ -957,6 +957,7 @@ function main_local_vs_cpu()
   -- TODO: replay!
   use_current_stage()
   pick_use_music_from()
+  local cpu = CPU1()
   local end_text = nil
   while true do
     if game_is_paused then
@@ -969,7 +970,7 @@ function main_local_vs_cpu()
     variable_step(function()
         if not P1.game_over and not P2.game_over then
           P1:local_run()
-          P2:cpu_run()
+          P2:cpu_run(cpu)
           P1:handle_pause()
           P2:handle_pause()
         end

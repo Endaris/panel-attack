@@ -1310,7 +1310,6 @@ function select_screen.main()
       P1 = Stack(1, "vs", cursor_data[1].state.panels_dir, cursor_data[1].state.level, cursor_data[1].state.character)
       P2 = Stack(2, "vs", cursor_data[1].state.panels_dir, cursor_data[1].state.level, cursor_data[1].state.character)
       P1.enable_analytics = true
-      P2.enable_analytics = true
       P1.garbage_target = P2
       P2.garbage_target = P1   
       current_stage = cursor_data[1].state.stage

@@ -1,5 +1,4 @@
 local analytics = require("analytics")
-require("cpu1")
 
   -- Stuff defined in this file:
   --  . the data structures that store the configuration of
@@ -14,8 +13,6 @@ local GARBAGE_DELAY = 60
 local GARBAGE_TRANSIT_TIME = 90
 local clone_pool = {}
 local current_music_is_casual = false -- must be false so that casual music start playing
-
-local cpu = CPU1()
 
 Stack = class(function(s, which, mode, panels_dir, speed, difficulty, player_number)
     s.character = config.character
@@ -630,7 +627,7 @@ function Stack.local_run(self)
   self:PdP()
 end
 
-function Stack.cpu_run(self)
+function Stack.cpu_run(self, cpu)
   if game_is_paused then
     return
   end
