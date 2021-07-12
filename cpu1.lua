@@ -16,6 +16,7 @@ CPU1 = class(function(cpu)
     cpu.enable_doubleInsert = false
     end)
 
+local wait = 0
 --inputs directly as variables cause there are no input devices
 local right = 1
 local left = 2
@@ -51,17 +52,8 @@ function CPU1.send_controls(self)
         -- print("self.idleFrames is " .. self.idleFrames)
         -- print("self.moveRateLimit is " .. self.moveRateLimit)
 
-
         return base64encode[1]
     end
-end
-
-function CPU1.swap(stack)
-    if stack.danger then 
-      return base64encode[down+swap+1]
-    end
-    
-    return base64encode[1]
 end
 
 function CPU1.updateStack(self, stack)
@@ -81,7 +73,7 @@ function CPU1.evaluate(self)
         else
             self:findActions()
             self:calculateCosts()
-            self:chooseAction()
+            self:chooseAction()      
         end
     end     
 end
@@ -122,7 +114,7 @@ function CPU1.findActions(self)
                 if colorConsecutiveRowCount >= 3 then
                     print("found vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
                     local panels = {}
-                    -- this won't work because there can be more than 1 panel in a row, potentially resulting in a set of panels that can't make a match
+                    -- technically we need one action for each unique combination of panels to find the best option
                     for i=#colorConsecutivePanels-2,#colorConsecutivePanels  do
                         table.insert(panels, colorConsecutivePanels[i][1])
                     end
@@ -193,6 +185,7 @@ end
 -- returns a 2 dimensional array where i is rownumber (bottom to top), index of j is panel color and value is the amount of panels of that color in the row
 function CPU1.panelsToRowGrid(self)
     local panels = self.stack.panels
+    self:printAsAprilStack()
     local grid = {}
     for i=1,#panels do
         grid[i] = {}
@@ -208,6 +201,30 @@ function CPU1.panelsToRowGrid(self)
         end
     end
     return grid
+end
+
+function CPU1.printAsAprilStack(self)
+    if self.stack then
+        local panels = self.stack.panels
+        local panelString = ""
+        for i=#panels,1,-1 do
+            for j=1,#panels[1] do
+                panelString = panelString.. (tostring(panels[i][j].color))
+            end
+        end
+        print("april panelstring is " .. panelString)
+
+        panelString = ""
+        for i=#panels,1,-1 do
+            for j=1,#panels[1] do
+                if not panels[i][j].state == "normal" then
+                    panelString = panelString.. (tostring(panels[i][j].color))    
+                end
+            end
+        end
+
+        print("panels in non-normal state are " .. panelString)
+    end  
 end
 
 
@@ -269,7 +286,6 @@ end)
 
 function V3Match.addCursorMovementToExecution(self, gridVector)
     print("adding cursor movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
-    print("math.sign gridVector.row is " .. math.sign(gridVector.row))
     --vertical movement
     if math.sign(gridVector.row) == 1 then
         for i=1,math.abs(gridVector.row) do
@@ -283,8 +299,6 @@ function V3Match.addCursorMovementToExecution(self, gridVector)
         --no vertical movement required
     end
 
-
-    print("math.sign gridVector.column is " .. math.sign(gridVector.column))
     --horizontal movement
     if math.sign(gridVector.column) == 1 then
         for i=1,math.abs(gridVector.column) do
@@ -304,7 +318,6 @@ function V3Match.addPanelMovementToExecution(self, gridVector)
 
     -- always starting with a swap because it is assumed that we already moved into the correct location for the initial swap
     table.insert(self.executionPath, swap)
-    print("math.sign gridVector.row is " .. math.sign(gridVector.row))
     --section needs a rework once moving panels between rows are considered
     --vertical movement
     if math.sign(gridVector.row) == 1 then
@@ -321,7 +334,6 @@ function V3Match.addPanelMovementToExecution(self, gridVector)
         --no vertical movement required
     end
 
-    print("math.sign gridVector.column is " .. math.sign(gridVector.column))
     --horizontal movement
     if math.sign(gridVector.column) == 1 then
         for i=2,math.abs(gridVector.column) do
@@ -370,12 +382,15 @@ function V3Match.calculateExecution(self, cursor_row, cursor_col)
         -- assuming we arrived with this panel
         nextPanel.column = self.targetColumn
         -- update the cursor position for the next round
-        cursorVec = cursorVec:add(moveToPanelVec):add(GridVector(0, movePanelVec.column + math.sign(movePanelVec.column)))
+        cursorVec = cursorVec:substract(moveToPanelVec):add(GridVector(0, movePanelVec.column + math.sign(movePanelVec.column)))
+        print("next cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
         --remove the panel we just moved so we don't try moving it again
         table.remove(panelsToMove, 1)
         print("found " ..#panelsToMove .. " panels to move")
     end
 
+    -- wait at the end of each action to avoid scanning the board again while the last swap is still in progress
+    table.insert(self.executionPath, wait)
     print("exiting calculateExecution")
 end
 
@@ -407,15 +422,7 @@ function V3Match.sortByDistanceToCursor(self, panels, cursorVec)
         end      
     end
 
-    for i=1,#panels do
-        print("before sorting panel " ..i.." cursorstartpos is " ..panels[i].cursorStartPos.row .."|".. panels[i].cursorStartPos.column)
-    end
-
-    print("commence sorting")
     table.sort(panels, function(a, b)
-        print("panel a is in column " ..a.column.." panel b is in column " ..b.column)
-        print("while sorting panel a's cursorstartpos is " ..a.cursorStartPos.row .."|".. a.cursorStartPos.column)
-        print("while sorting panel b's cursorstartpos is " ..b.cursorStartPos.row .."|".. b.cursorStartPos.column)
         return cursorVec:distance(a.cursorStartPos) < cursorVec:distance(b.cursorStartPos)
     end)
     
@@ -527,14 +534,15 @@ function GridVector.distance(self, otherVec)
 end
 
 function GridVector.difference(self, otherVec)
-    print("calculating gridvector difference")
-    print("self is " ..self.row .."|"..self.column)
-    print("otherVec is " ..otherVec.row .."|"..otherVec.column)
     return GridVector(self.row - otherVec.row, self.column - otherVec.column)
 end
 
 function GridVector.add(self, otherVec)
     return GridVector(self.row + otherVec.row, self.column + otherVec.column)
+end
+
+function GridVector.substract(self, otherVec)
+    return GridVector(self.row - otherVec.row, self.column - otherVec.column)
 end
 
 function math.sign(x)
