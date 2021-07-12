@@ -634,7 +634,7 @@ function Stack.cpu_run(self, cpu)
 
   self:update_cards()
   cpu:updateStack(self)
-  self.input_state = cpu.send_controls(self)
+  self.input_state = cpu:send_controls()
   self:prep_rollback()
   self:controls()
   self:prep_first_row()

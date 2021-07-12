@@ -34,15 +34,24 @@ local doubleInsert = 512
 local stealth = 1024
 
 function CPU1.send_controls(self)
-    if self.inputQueue and #self.inputQueue > 0 and self.idleFrames >= self.moveRateLimit then
-        return base64encode[self.inputQueue[1] + 1]
+
+    if self.stack and (self.stack.countdown_timer == 0 or not self.stack.countdown_timer) and 
+        self.inputQueue and #self.inputQueue > 0 and self.idleFrames >= self.moveRateLimit then
+        local input = table.remove(self.inputQueue, 1)
+        print("executing input " .. input)
+        self.idleFrames = 0
+        return base64encode[input + 1]
     else
         if not self.idleFrames then
             self.idleFrames = 0
         else
             self.idleFrames = self.idleFrames + 1
         end
-        
+        -- print("#self.inputQueue is " .. #self.inputQueue)
+        -- print("self.idleFrames is " .. self.idleFrames)
+        -- print("self.moveRateLimit is " .. self.moveRateLimit)
+
+
         return base64encode[1]
     end
 end
@@ -63,36 +72,29 @@ function CPU1.updateStack(self, stack)
     self:evaluate()
 end
 
-function CPU1.evaluate(self)
-    if self.panelsChanged or self.cursorChanged then
-        self.idleFrames = 0
-        if #self.inputQueue > 0 then
-            table.remove(self.inputQueue, 1)
+function CPU1.evaluate(self)    
+    if #self.inputQueue == 0 then
+        self.currentAction = nil
+        if #self.actionQueue > 0 then
+            local action = table.remove(self.actionQueue, 1)
+            self.currentAction = action
+        else
+            self:findActions()
+            self:calculateCosts()
+            self:chooseAction()
         end
-        
-        if #self.inputQueue == 0 then
-            if #self.actionQueue > 0 then
-                self.currentAction = self.actionQueue[1]
-            else
-                self:findActions()
-                self:calculateCosts()
-                self:chooseAction()
-            end
-        end     
-    else
-        self.idleFrames = self.idleFrames + 1
-
-    end
+    end     
 end
 
 function CPU1.findActions(self)
+    self.actions = {}
     local grid = self:panelsToRowGrid()
     
     --find matches, i is row, j is panel color, grid[i][j] is the amount of panels of that color in the row, k is the column the panel is in
     for j=1,#grid[1] do
         local colorConsecutiveRowCount = 0
         local colorConsecutivePanels = {}
-        for i=1,#grid do
+        for i=1,#grid do       
             -- horizontal 3 matches
             --  if grid[i][j] >= 3 then
             --     --fetch the actual panels
@@ -110,17 +112,19 @@ function CPU1.findActions(self)
              -- vertical 3 matches
              if grid[i][j] > 0 then
                 colorConsecutiveRowCount = colorConsecutiveRowCount + 1
+                colorConsecutivePanels[colorConsecutiveRowCount] = {}
                 for k=1, #self.stack.panels[i] do
                     if self.stack.panels[i][k].color == j then
                         local actionPanel = ActionPanel(j, i, k)
-                        table.insert(colorConsecutivePanels, actionPanel)
+                        table.insert(colorConsecutivePanels[colorConsecutiveRowCount], actionPanel)
                     end
                 end
                 if colorConsecutiveRowCount >= 3 then
                     print("found vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
                     local panels = {}
+                    -- this won't work because there can be more than 1 panel in a row, potentially resulting in a set of panels that can't make a match
                     for i=#colorConsecutivePanels-2,#colorConsecutivePanels  do
-                        table.insert(panels, colorConsecutivePanels[i])
+                        table.insert(panels, colorConsecutivePanels[i][1])
                     end
                     table.insert(self.actions, V3Match(panels))
                 end
@@ -166,7 +170,12 @@ function CPU1.chooseAction(self)
         print("current action is " ..self.currentAction.name)
         self.currentAction:calculateExecution(self.stack.cur_row, self.stack.cur_col + 0.5)
         --print("first element of executionpath is " ..self.currentAction.executionPath[1])
+        for i = 1, #self.currentAction.executionPath do
+            print("next element of executionpath is " ..self.currentAction.executionPath[i])
+        end
         self.inputQueue = self.currentAction.executionPath
+    else
+        table.insert(self.inputQueue, raise)
     end 
 end
 
@@ -255,32 +264,35 @@ V3Match = class(function(action, panels)
     action.stackFreezeValue = 0
     action.estimatedCost = 0
     action.targetColumn = 0
-    action.executionPath = nil
+    action.executionPath = {}
 end)
 
 function V3Match.addCursorMovementToExecution(self, gridVector)
     print("adding cursor movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
+    print("math.sign gridVector.row is " .. math.sign(gridVector.row))
     --vertical movement
     if math.sign(gridVector.row) == 1 then
         for i=1,math.abs(gridVector.row) do
-            table.insert(self.executionPath, up)
+            table.insert(self.executionPath, down)
         end
     elseif math.sign(gridVector.row) == -1 then
         for i=1,math.abs(gridVector.row) do
-            table.insert(self.executionPath, down)
+            table.insert(self.executionPath, up)
         end
     else
         --no vertical movement required
     end
 
+
+    print("math.sign gridVector.column is " .. math.sign(gridVector.column))
     --horizontal movement
     if math.sign(gridVector.column) == 1 then
         for i=1,math.abs(gridVector.column) do
-            table.insert(self.executionPath, right)
+            table.insert(self.executionPath, left)
         end
     elseif math.sign(gridVector.column) == -1 then
         for i=1,math.abs(gridVector.column) do
-            table.insert(self.executionPath, left)
+            table.insert(self.executionPath, right)
         end
     else
         --no vertical movement required
@@ -292,16 +304,16 @@ function V3Match.addPanelMovementToExecution(self, gridVector)
 
     -- always starting with a swap because it is assumed that we already moved into the correct location for the initial swap
     table.insert(self.executionPath, swap)
-
+    print("math.sign gridVector.row is " .. math.sign(gridVector.row))
     --section needs a rework once moving panels between rows are considered
     --vertical movement
     if math.sign(gridVector.row) == 1 then
-        for i=1,math.abs(gridVector.row) do
+        for i=2,math.abs(gridVector.row) do
             table.insert(self.executionPath, up)
             table.insert(self.executionPath, swap)
         end
     elseif math.sign(gridVector.row) == -1 then
-        for i=1,math.abs(gridVector.row) do
+        for i=2,math.abs(gridVector.row) do
             table.insert(self.executionPath, down)
             table.insert(self.executionPath, swap)
         end
@@ -309,14 +321,15 @@ function V3Match.addPanelMovementToExecution(self, gridVector)
         --no vertical movement required
     end
 
+    print("math.sign gridVector.column is " .. math.sign(gridVector.column))
     --horizontal movement
     if math.sign(gridVector.column) == 1 then
-        for i=1,math.abs(gridVector.column) do
+        for i=2,math.abs(gridVector.column) do
             table.insert(self.executionPath, right)
             table.insert(self.executionPath, swap)
         end
     elseif math.sign(gridVector.column) == -1 then
-        for i=1,math.abs(gridVector.column) do
+        for i=2,math.abs(gridVector.column) do
             table.insert(self.executionPath, left)
             table.insert(self.executionPath, swap)
         end
@@ -330,17 +343,25 @@ function V3Match.calculateCost(self)
 end
 
 function V3Match.calculateExecution(self, cursor_row, cursor_col)
+    print("calculating execution path for action " .. self.name)
+    print("with color " .. self.color .. " in column " .. self.targetColumn)
+    print("panel 1 is at coordinates " .. self.panels[1].row .. "|" .. self.panels[1].column)
+    print("panel 2 is at coordinates " .. self.panels[2].row .. "|" .. self.panels[2].column)
+    print("panel 3 is at coordinates " .. self.panels[3].row .. "|" .. self.panels[3].column)
+
+
+
     local panelsToMove = self:getPanelsToMove()
     print("found " ..#panelsToMove .. " panels to move")
     -- cursor_col is the column of the left part of the cursor
-    local cursorVec = GridVector(cursor_row, cursor_col + 0.5)
+    local cursorVec = GridVector(cursor_row, cursor_col)
     print("cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
     while (#panelsToMove > 0)
     do
         panelsToMove = self:sortByDistanceToCursor(panelsToMove, cursorVec)
         local nextPanel = panelsToMove[1]
         print("nextPanel cursorstartpos is " ..nextPanel.cursorStartPos.row .."|"..nextPanel.cursorStartPos.column)
-        local moveToPanelVec = cursorVec.difference(nextPanel.cursorStartPos)
+        local moveToPanelVec = cursorVec:difference(nextPanel.cursorStartPos)
         print("difference vec is " ..moveToPanelVec.row .. "|" ..moveToPanelVec.column)
         self:addCursorMovementToExecution(moveToPanelVec)
         local movePanelVec = GridVector(0, self.targetColumn - nextPanel.column)
@@ -349,10 +370,9 @@ function V3Match.calculateExecution(self, cursor_row, cursor_col)
         -- assuming we arrived with this panel
         nextPanel.column = self.targetColumn
         -- update the cursor position for the next round
-        -- the -1 here is wrong, still need to account for direction/sign
-        cursorVec = cursorVec.add(moveToPanelVec).add(GridVector(0, movePanelVec.column + math.sign(movePanelVec.column)))
+        cursorVec = cursorVec:add(moveToPanelVec):add(GridVector(0, movePanelVec.column + math.sign(movePanelVec.column)))
         --remove the panel we just moved so we don't try moving it again
-        table.remove(panelsToMove, nextPanel)
+        table.remove(panelsToMove, 1)
         print("found " ..#panelsToMove .. " panels to move")
     end
 
@@ -396,7 +416,7 @@ function V3Match.sortByDistanceToCursor(self, panels, cursorVec)
         print("panel a is in column " ..a.column.." panel b is in column " ..b.column)
         print("while sorting panel a's cursorstartpos is " ..a.cursorStartPos.row .."|".. a.cursorStartPos.column)
         print("while sorting panel b's cursorstartpos is " ..b.cursorStartPos.row .."|".. b.cursorStartPos.column)
-        return cursorVec.distance(a.cursorStartPos) < cursorVec.distance(b.cursorStartPos)
+        return cursorVec:distance(a.cursorStartPos) < cursorVec:distance(b.cursorStartPos)
     end)
     
     return panels
@@ -517,6 +537,6 @@ function GridVector.add(self, otherVec)
     return GridVector(self.row + otherVec.row, self.column + otherVec.column)
 end
 
-function math.sign(number)
+function math.sign(x)
     return x > 0 and 1 or x < 0 and -1 or 0
 end
