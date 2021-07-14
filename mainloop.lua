@@ -67,6 +67,8 @@ function fmainloop()
   wait()
   analytics.init()
   apply_config_volume()
+  write_cpuConfigs()
+  read_cpuConfigs()
   -- create folders in appdata for those who don't have them already
   love.filesystem.createDirectory("characters")
   love.filesystem.createDirectory("panels")
@@ -944,13 +946,85 @@ function main_local_vs()
   end
 end
 
+function main_local_vs_cpu_settings()
+    if themes[config.theme].musics.main then
+      find_and_add_music(themes[config.theme].musics, "main")
+    end
+    background = themes[config.theme].images.bg_main
+    reset_filters()
+    character_loader_clear()
+    stage_loader_clear()
+
+    local configNames = {}
+    for key,val in spairs(cpu_configs) do
+      configNames[#configNames+1] = key
+      print("cpu config with value " .. key)
+    end
+  
+    local items = {{"CPU"},
+                  {"Go!", select_screen.main},
+                  {"Back", main_select_mode}}
+    local loc_items = {loc("CPU"), loc("go_"), loc("back")}
+  
+    local selectedConfig = 1
+    local active_idx = 1
+    local k = K[1]
+    local ret = nil
+    while true do
+      local to_print, to_print2, arrow = "", "", ""
+      for i=1,#items do
+        if active_idx == i then
+          arrow = arrow .. ">"
+        else
+          arrow = arrow .. "\n"
+        end
+        to_print = to_print .. "   " .. loc_items[i] .. "\n"
+      end
+      to_print2 = "                  " .. configNames[selectedConfig]
+      gprint(arrow, unpack(main_menu_screen_pos))
+      gprint(to_print, unpack(main_menu_screen_pos))
+      gprint(to_print2, unpack(main_menu_screen_pos))
+      wait()
+      variable_step(function()
+        if menu_up(k) then
+          active_idx = wrap(1, active_idx-1, #items)
+        elseif menu_down(k) then
+          active_idx = wrap(1, active_idx+1, #items)
+        elseif menu_right(k) then
+          if active_idx==1 then selectedConfig = bound(1,selectedConfig+1,#configNames) end
+        elseif menu_left(k) then
+          if active_idx==1 then selectedConfig = bound(1,selectedConfig-1,#configNames) end
+        elseif menu_enter(k) then
+          if active_idx == 2 then
+            active_cpuConfig = cpu_configs[selectedConfig]
+            stop_the_music()
+            ret = {items[active_idx][2], items[active_idx][3]}
+          elseif active_idx == 3 then
+            ret = {items[active_idx][2], items[active_idx][3]}
+          else
+            active_idx = wrap(1, active_idx + 1, #items)
+          end
+        elseif menu_escape(k) then
+          if active_idx == #items then
+            ret = {items[active_idx][2], items[active_idx][3]}
+          else
+            active_idx = #items
+          end
+        end
+      end)
+      if ret then
+        return unpack(ret)
+      end
+    end
+end
+
 function main_local_vs_cpu_setup()
   currently_spectating = false
   my_name = config.name or "Player 1"
   op_name = "CPU"
   op_state = nil
   select_screen.character_select_mode = "1p_vs_cpu"
-  return select_screen.main
+  return main_local_vs_cpu_settings
 end
 
 function main_local_vs_cpu()

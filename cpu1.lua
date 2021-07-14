@@ -1,3 +1,21 @@
+cpu_configs = {
+    ["DevConfig"] =
+    {
+        {"ReadingBehaviour", "WaitAll"},
+    },
+    ["DummyTestOption"] =
+    {
+        {"ReadingBehaviour", "WaitAll"},
+    }
+}
+
+active_cpuConfig = cpu_configs[1]
+
+CPU1Config = class(function(cpuConfig)
+    cpuConfig.ReadingBehaviour = "WaitAll"
+end)
+
+
 CPU1 = class(function(cpu)
     cpu.panelsChanged = false
     cpu.cursorChanged = false
@@ -5,8 +23,8 @@ CPU1 = class(function(cpu)
     cpu.currentAction = nil
     cpu.actionQueue = {}
     cpu.inputQueue = {}
-    cpu.moveRateLimit = 10
-    cpu.swapRateLimit = 6
+    cpu.moveRateLimit = 20
+    cpu.swapRateLimit = 20
     cpu.idleFrames = 0
     cpu.stack = nil
     cpu.enable_stealth = true
@@ -57,25 +75,26 @@ function CPU1.send_controls(self)
 end
 
 function CPU1.updateStack(self, stack)
-    self.panelsChanged = self.stack == nil or not (self.stack.panels == stack.panels)
-    self.cursorChanged = self.stack == nil or not (self.stack.cursor_pos == stack.cursor_pos)
-    
     self.stack = stack
     self:evaluate()
 end
 
 function CPU1.evaluate(self)    
     if #self.inputQueue == 0 then
-        self.currentAction = nil
+        self:finalizeAction(self.currentAction)
         if #self.actionQueue > 0 then
             local action = table.remove(self.actionQueue, 1)
             self.currentAction = action
         else
             self:findActions()
             self:calculateCosts()
-            self:chooseAction()      
+            self:chooseAction()
         end
-    end     
+    end
+end
+
+function CPU1.finalizeAction(self, action)
+    self.currentAction = nil
 end
 
 function CPU1.findActions(self)
@@ -112,13 +131,21 @@ function CPU1.findActions(self)
                     end
                 end
                 if colorConsecutiveRowCount >= 3 then
-                    print("found vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
-                    local panels = {}
-                    -- technically we need one action for each unique combination of panels to find the best option
-                    for i=#colorConsecutivePanels-2,#colorConsecutivePanels  do
-                        table.insert(panels, colorConsecutivePanels[i][1])
+                    -- technically we need action for each unique combination of panels to find the best option
+                    local combinations = #colorConsecutivePanels[colorConsecutiveRowCount - 2] * #colorConsecutivePanels[colorConsecutiveRowCount - 1] * #colorConsecutivePanels[colorConsecutiveRowCount]
+                    print("found " ..combinations .. " combination(s) for a vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
+
+                    for q=1,#colorConsecutivePanels[colorConsecutiveRowCount - 2] do
+                        for r=1,#colorConsecutivePanels[colorConsecutiveRowCount - 1] do                    
+                            for s=1,#colorConsecutivePanels[colorConsecutiveRowCount] do
+                                local panels = {}
+                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 2][q])
+                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 1][r])
+                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount][s])
+                                table.insert(self.actions, V3Match(panels))
+                            end
+                        end
                     end
-                    table.insert(self.actions, V3Match(panels))
                 end
                 -- if colorConsecutiveRowCount >= 4 then
                 --     print("found vertical 4 combo in row " .. i-3 .. " to " .. i .. " for color " .. j)
@@ -160,7 +187,6 @@ function CPU1.chooseAction(self)
         --take the first action for testing purposes
         self.currentAction = self:getCheapestAction()
         print("current action is " ..self.currentAction.name)
-        self.currentAction:calculateExecution(self.stack.cur_row, self.stack.cur_col + 0.5)
         --print("first element of executionpath is " ..self.currentAction.executionPath[1])
         for i = 1, #self.currentAction.executionPath do
             print("next element of executionpath is " ..self.currentAction.executionPath[i])
@@ -172,14 +198,34 @@ function CPU1.chooseAction(self)
 end
 
 function CPU1.getCheapestAction(self)
-    local action = nil
-    for i=1,#self.actions do
-        if not action or action.estimatedCost > self.actions[i].estimatedCost then
-            action = self.actions[i]
-        end
-    end
+    local actions = {}
 
-    return action
+    if #self.actions > 0 then
+        table.sort(self.actions, function(a,b) 
+            return a.estimatedCost < b.estimatedCost
+        end)
+
+        for i=1,#self.actions do
+            self.actions[i]:print()
+        end
+
+        local i = 1
+        while i <= #self.actions and self.actions[i].estimatedCost == self.actions[1].estimatedCost do
+            self.actions[i]:calculateExecution(self.stack.cur_row, self.stack.cur_col + 0.5)
+            print(i)
+            table.insert(actions, self.actions[i])
+            i = i+1
+        end
+
+        table.sort(actions, function(a,b)
+            return #a.executionPath < #b.executionPath
+        end)
+
+        return actions[1]
+    else
+        return Raise()
+    end
+    
 end
 
 -- returns a 2 dimensional array where i is rownumber (bottom to top), index of j is panel color and value is the amount of panels of that color in the row
@@ -202,6 +248,31 @@ function CPU1.panelsToRowGrid(self)
     end
     return grid
 end
+
+-- exists to avoid the case where the cpu finds an action with panels that are falling down and thus no longer in the expected location when the cursor arrives
+-- may still be faulty if the panels coincidently fall into a chain
+-- should be dropped once the CPU is capable of properly tracking the panels for its current action.
+-- function simulatePostFallingState(panels)
+--     print("simulating post falling state")
+--     -- go down from top to bottom and reinsert any 0s after finding a non 0 at the top
+--     print("columns = " .. #panels[1])
+--     print("rows = " .. #panels)
+--     for i=1,#panels[1] do
+--         local panelFound = false
+--         for j=#panels,1,-1 do
+--             print("panel at coordinate " .. j .. "|" .. i .. " has color " .. panels[j][i].color)
+--             if panels[j][i].color == 0 then
+--                 if panelFound then
+--                     table.remove(panels[j], i)
+--                     table.insert(panels[j], 0)
+--                 end
+--             else
+--                 panelFound = true
+--             end
+--         end
+--     end
+--     return panels
+-- end
 
 function CPU1.printAsAprilStack(self)
     if self.stack then
@@ -227,6 +298,11 @@ function CPU1.printAsAprilStack(self)
     end  
 end
 
+Raise = class(function(action)
+    Action.init()
+    action.estimatedCost = 0
+    action.executionPath = { raise, wait }
+end, Action)
 
 Action = class(function(action, panels)
     action.panels = panels
@@ -234,14 +310,24 @@ Action = class(function(action, panels)
     action.stackFreezeValue = 0
     action.estimatedCost = 0
     action.executionPath = nil
+    action.isClear = false
 end)
 
 function Action.addCursorMovementToExecution(self, gridVector)
+    error("addCursorMovementToExecution was not implemented for action " ..self.name)
 
 end
 
 function Action.addPanelMovementToExecution(self, gridVector)
+    error("addCursorMovementToExecution was not implemented for action " ..self.name)
+end
 
+function Action.calculateExecution(self, cursor_row, cursor_col)
+    error("calculateExecution was not implemented for action " ..self.name)
+end
+
+function Action.calculateCost(self)
+    error("calculateCost was not implemented for action " ..self.name)
 end
 
 ActionPanel = class(function(actionPanel, color, row, column)
@@ -254,16 +340,16 @@ ActionPanel = class(function(actionPanel, color, row, column)
     actionPanel.isExecutionPanel = false
 end)
 
+function ActionPanel.print(self)
+    print("panel with color " .. self.color .. " at coordinate " .. self.row .. "|" .. self.column)
+end
+
 
 H3Match = class(function(action, panels)
+    Action.init(action, panels)
     action.name = "Horizontal 3 Match"
     action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+end, Action)
 
 function H3Match.calculateCost(self)
     self.estimatedCost = 1000
@@ -274,15 +360,18 @@ function H3Match.calculateExecution(self, cursor_row, cursor_col)
 end
 
 V3Match = class(function(action, panels)
+    Action.init(action, panels)
     action.name = "Vertical 3 Match"
     action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.targetColumn = 0
-    action.executionPath = {}
-end)
+    action.targetColumn = 0    
+end, Action)
+
+function V3Match.print(self)
+    print("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
+    for i=1,#self.panels do
+        self.panels[i]:print()
+    end
+end
 
 function V3Match.addCursorMovementToExecution(self, gridVector)
     print("adding cursor movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
@@ -356,12 +445,13 @@ end
 
 function V3Match.calculateExecution(self, cursor_row, cursor_col)
     print("calculating execution path for action " .. self.name)
+    print("action has " .. #self.panels .. " panels")
     print("with color " .. self.color .. " in column " .. self.targetColumn)
     print("panel 1 is at coordinates " .. self.panels[1].row .. "|" .. self.panels[1].column)
     print("panel 2 is at coordinates " .. self.panels[2].row .. "|" .. self.panels[2].column)
     print("panel 3 is at coordinates " .. self.panels[3].row .. "|" .. self.panels[3].column)
 
-
+    self.executionPath = {}
 
     local panelsToMove = self:getPanelsToMove()
     print("found " ..#panelsToMove .. " panels to move")
@@ -430,6 +520,7 @@ function V3Match.sortByDistanceToCursor(self, panels, cursorVec)
 end
 
 function V3Match.chooseColumn(self)
+    self:print()
     local column
     local minCost = 1000
     for i=1,6 do

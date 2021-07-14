@@ -243,3 +243,34 @@ function recursive_copy(source, destination)
     end
   end
 end
+
+function write_cpuConfigs() pcall( function()
+  love.filesystem.createDirectory("cpuconfigs")
+  local file = love.filesystem.newFile("cpuconfigs/sample cpu.json")
+  file:open("w")
+  file:write(json.encode(cpu_configs))
+  file:close()
+  end)
+end
+
+function read_cpuConfigs() pcall(function() 
+  local cpu_config_files = love.filesystem.getDirectoryItems("cpuconfigs") or {}
+  print("loading custom cpuconfigs...")
+  for _,filename in pairs(cpu_config_files) do
+    print(filename)
+    if love.filesystem.getInfo("cpuconfigs/"..filename)
+    and filename ~= "stock (example).txt"
+    and filename ~= "README.txt" then
+      print("loading custom cpu config: "..(filename or "nil"))
+      local current_config = {}
+      local file = love.filesystem.newFile("cpuconfigs/"..filename)
+      file:open("r")
+      local teh_json = file:read(file:getSize())
+      current_config = json.decode(teh_json) or {}
+      for config_name, cpu_config in pairs(current_config) do
+        cpu_configs[config_name] = cpu_config
+      end
+      print("loaded above config")
+    end    
+  end
+end) end
