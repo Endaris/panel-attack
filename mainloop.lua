@@ -996,7 +996,7 @@ function main_local_vs_cpu_settings()
           if active_idx==1 then selectedConfig = bound(1,selectedConfig-1,#configNames) end
         elseif menu_enter(k) then
           if active_idx == 2 then
-            active_cpuConfig = cpu_configs[selectedConfig]
+            active_cpuConfig = cpu_configs[configNames[selectedConfig]]
             stop_the_music()
             ret = {items[active_idx][2], items[active_idx][3]}
           elseif active_idx == 3 then

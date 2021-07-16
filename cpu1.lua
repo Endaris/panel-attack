@@ -1,18 +1,27 @@
 cpu_configs = {
     ["DevConfig"] =
     {
-        {"ReadingBehaviour", "WaitAll"},
+        ReadingBehaviour =  "WaitAll",
+        Log = true,
+        MoveRateLimit = 40,
+        MoveSwapRateLimit = 40,
     },
     ["DummyTestOption"] =
     {
-        {"ReadingBehaviour", "WaitAll"},
+        ReadingBehaviour =  "WaitAll",
+        Log = false,
+        MoveRateLimit = 40,
+        MoveSwapRateLimit = 40,
     }
 }
 
 active_cpuConfig = cpu_configs[1]
 
-CPU1Config = class(function(cpuConfig)
-    cpuConfig.ReadingBehaviour = "WaitAll"
+CPU1Config = class(function(cpuConfig, actualConfig)
+    cpuConfig.ReadingBehaviour = actualConfig["ReadingBehaviour"]
+    cpuConfig.Log = actualConfig["Log"]
+    cpuConfig.MoveRateLimit = actualConfig["MoveRateLimit"]
+    cpuConfig.MoveSwapRateLimit = actualConfig["MoveSwapRateLimit"]
 end)
 
 
@@ -23,16 +32,23 @@ CPU1 = class(function(cpu)
     cpu.currentAction = nil
     cpu.actionQueue = {}
     cpu.inputQueue = {}
-    cpu.moveRateLimit = 20
-    cpu.swapRateLimit = 20
     cpu.idleFrames = 0
+    cpu.waitFrames = 0
     cpu.stack = nil
     cpu.enable_stealth = true
     cpu.enable_inserts = true
     cpu.enable_slides = false
     cpu.enable_catches = false
     cpu.enable_doubleInsert = false
-    end)
+    cpu.lastInput = nil
+    if active_cpuConfig then
+        print("cpu config successfully loaded")
+        cpu.config = CPU1Config(active_cpuConfig)
+        print_config(active_cpuConfig)
+    else
+        error("cpu config is nil")
+    end
+end)
 
 local wait = 0
 --inputs directly as variables cause there are no input devices
@@ -52,26 +68,62 @@ local doubleInsert = 512
 --the CPU should make sure to save up enough idleframes for all moves and then perform the inputs in one go
 local stealth = 1024
 
-function CPU1.send_controls(self)
-
-    if self.stack and (self.stack.countdown_timer == 0 or not self.stack.countdown_timer) and 
-        self.inputQueue and #self.inputQueue > 0 and self.idleFrames >= self.moveRateLimit then
-        local input = table.remove(self.inputQueue, 1)
-        print("executing input " .. input)
-        self.idleFrames = 0
-        return base64encode[input + 1]
-    else
-        if not self.idleFrames then
-            self.idleFrames = 0
-        else
-            self.idleFrames = self.idleFrames + 1
-        end
-        -- print("#self.inputQueue is " .. #self.inputQueue)
-        -- print("self.idleFrames is " .. self.idleFrames)
-        -- print("self.moveRateLimit is " .. self.moveRateLimit)
-
-        return base64encode[1]
+function isMovement(input)
+    --innocently assuming we never input a direction together with something else unless it's a special that includes a timed swap anyway (doubleInsert,stealth)
+    if input then
+        return input > 0 and input < 16
+    else --only relevant for the very first input
+        return true
     end
+end
+
+function CPU1.send_controls(self)
+    --the conditions are intentional so that the control flow (specifically the exits) is more obvious rather than having a tail of "else return" where you can't tell where it's coming from
+    if not self.stack then
+        return self:idle()
+    else    --there is a stack, most basic requirement
+        if not self.inputQueue or #self.inputQueue == 0 then
+            return self:idle()
+        else --there is actually something to execute
+            if self.stack.countdown_timer and self.stack.countdown_timer > 0 and not isMovement(self.inputQueue[1]) then
+                return self:idle()
+            else --either we're just moving or countdown is already over so we can actually do the thing
+                if isMovement(self.lastInput) and isMovement(self.inputQueue[1]) then
+                    if self.idleFrames < self.config.MoveRateLimit then
+                        return self:idle()
+                    else
+                        return self:input()
+                    end
+                else
+                    if self.idleFrames < self.config.MoveSwapRateLimit then
+                        return self:idle()
+                    else
+                        return self:input()
+                    end
+                end
+            end
+        end
+    end
+end
+
+function CPU1.idle(self)
+    if not self.idleFrames then
+        self.idleFrames = 0
+    else
+        self.idleFrames = self.idleFrames + 1
+    end
+    --cpuLog("#self.inputQueue is " .. #self.inputQueue)
+    --cpuLog("self.idleFrames is " .. self.idleFrames)
+    -- cpuLog("self.moveRateLimit is " .. self.moveRateLimit)
+
+    return base64encode[1]
+end
+
+function CPU1.input(self)
+    self.lastInput = table.remove(self.inputQueue, 1)
+    cpuLog("executing input " .. self.lastInput)
+    self.idleFrames = 0
+    return base64encode[self.lastInput + 1]
 end
 
 function CPU1.updateStack(self, stack)
@@ -81,19 +133,64 @@ end
 
 function CPU1.evaluate(self)    
     if #self.inputQueue == 0 then
-        self:finalizeAction(self.currentAction)
-        if #self.actionQueue > 0 then
-            local action = table.remove(self.actionQueue, 1)
-            self.currentAction = action
-        else
-            self:findActions()
-            self:calculateCosts()
+        if self.currentAction then
+            self:finalizeCurrentAction()
+        end
+
+        if self.waitFrames <= 0 then          
+            if #self.actionQueue == 0 then
+                -- this part should go into a subroutine later so that calculations can be done over multiple frames
+                self:findActions()
+                self:calculateCosts()
+            end
             self:chooseAction()
+        else
+            self.waitFrames = self.waitFrames - 1
         end
     end
+    
 end
 
-function CPU1.finalizeAction(self, action)
+function CPU1.finalizeCurrentAction(self)
+    local waitFrames = 0
+    cpuLog("finalizing action " .. self.currentAction.name)
+    cpuLog("ReadingBehaviour config value is ".. self.config.ReadingBehaviour)
+
+    if self.currentAction.panels then
+        if self.config.ReadingBehaviour == "WaitAll" then
+            -- constant for completing a swap, see Panel.clear() for reference
+            waitFrames = waitFrames + 4
+            -- wait for all panels to pop
+            waitFrames = waitFrames + level_to_flash[self.stack.level]
+            waitFrames = waitFrames + level_to_face[self.stack.level]
+            --the first panel is popped at the end of the face part so there's only additional waiting time for each panel beyond the first
+            for i=1,#self.currentAction.panels do
+                waitFrames = waitFrames + level_to_pop[self.stack.level]
+            end
+
+            -- wait for other panels to fall
+            waitFrames = waitFrames + level_to_hover[self.stack.level]
+            -- this is overly simplified, assuming that all the panels in the action are vertically stacked, meaning this might overshoot the waiting time
+            waitFrames = waitFrames + #self.currentAction.panels
+
+            -- 2 frames safety margin cause i'm still finding completed matches
+            waitFrames = waitFrames + 2
+         
+        elseif self.config.ReadingBehaviour == "WaitMatch" then
+            -- constant for completing a swap, see Panel.clear() for reference
+            waitFrames = 4
+        --else  cpu.config["ReadingBehaviour"] == "Instantly", default behaviour
+        --  waitFrames = 0
+        end
+    else
+        -- no panels -> must be a raise
+        waitFrames = 10
+    end
+
+    cpuLog("setting waitframes to " .. waitFrames)
+    self.waitFrames = waitFrames
+
+    -- action is now fully wrapped up
     self.currentAction = nil
 end
 
@@ -109,7 +206,7 @@ function CPU1.findActions(self)
             -- horizontal 3 matches
             --  if grid[i][j] >= 3 then
             --     --fetch the actual panels
-            --     print("found horizontal 3 match in row " .. i .. " for color " .. j)
+            --     cpuLog("found horizontal 3 match in row " .. i .. " for color " .. j)
             --     local actionPanels = {}
             --     for k=1, #self.stack.panels[i] do
             --         if self.stack.panels[i][k].color == j then
@@ -133,7 +230,7 @@ function CPU1.findActions(self)
                 if colorConsecutiveRowCount >= 3 then
                     -- technically we need action for each unique combination of panels to find the best option
                     local combinations = #colorConsecutivePanels[colorConsecutiveRowCount - 2] * #colorConsecutivePanels[colorConsecutiveRowCount - 1] * #colorConsecutivePanels[colorConsecutiveRowCount]
-                    print("found " ..combinations .. " combination(s) for a vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
+                    cpuLog("found " ..combinations .. " combination(s) for a vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
 
                     for q=1,#colorConsecutivePanels[colorConsecutiveRowCount - 2] do
                         for r=1,#colorConsecutivePanels[colorConsecutiveRowCount - 1] do                    
@@ -148,17 +245,17 @@ function CPU1.findActions(self)
                     end
                 end
                 -- if colorConsecutiveRowCount >= 4 then
-                --     print("found vertical 4 combo in row " .. i-3 .. " to " .. i .. " for color " .. j)
+                --     cpuLog("found vertical 4 combo in row " .. i-3 .. " to " .. i .. " for color " .. j)
                 --     table.insert(self.actions, V4Combo(colorConsecutivePanels))
                 -- end
                 -- if colorConsecutiveRowCount >= 5 then
-                --     print("found vertical 5 combo in row " .. i-4 .. " to " .. i .. " for color " .. j)
+                --     cpuLog("found vertical 5 combo in row " .. i-4 .. " to " .. i .. " for color " .. j)
                 --     table.insert(self.actions, V5Combo(colorConsecutivePanels))
                 -- end
              else
                 colorConsecutiveRowCount = 0
                 consecutivePanels = {}
-             end      
+             end
              
              
          end
@@ -178,23 +275,28 @@ function CPU1.estimateCost(self, action)
 end
 
 function CPU1.chooseAction(self)
-    for i=1,#self.actions do
-        print("Action at index" .. i .. ": " ..self.actions[i].name .." with cost of " ..self.actions[i].estimatedCost)
-    end
 
-    if #self.actions > 0 and self.currentAction == nil then
-        print("current action is nil and there are actions")
-        --take the first action for testing purposes
-        self.currentAction = self:getCheapestAction()
-        print("current action is " ..self.currentAction.name)
-        --print("first element of executionpath is " ..self.currentAction.executionPath[1])
-        for i = 1, #self.currentAction.executionPath do
-            print("next element of executionpath is " ..self.currentAction.executionPath[i])
-        end
+    if #self.actionQueue > 0 then
+        local action = table.remove(self.actionQueue, 1)
+        self.currentAction = action
+        self.currentAction:calculateExecution()
         self.inputQueue = self.currentAction.executionPath
     else
-        table.insert(self.inputQueue, raise)
-    end 
+        for i=1,#self.actions do
+            cpuLog("Action at index" .. i .. ": " ..self.actions[i].name .." with cost of " ..self.actions[i].estimatedCost)
+        end
+
+        if #self.actions > 0 then
+            self.currentAction = self:getCheapestAction()
+        else
+            self.currentAction = Raise()
+        end
+    end
+
+    cpuLog("chose following action")
+    self.currentAction:print()
+
+    self.inputQueue = self.currentAction.executionPath
 end
 
 function CPU1.getCheapestAction(self)
@@ -205,14 +307,18 @@ function CPU1.getCheapestAction(self)
             return a.estimatedCost < b.estimatedCost
         end)
 
-        for i=1,#self.actions do
+        for i=#self.actions, 1,-1 do
             self.actions[i]:print()
+            -- this is a crutch cause sometimes we can find actions that are already completed and then we choose them cause they're already...complete
+            if self.actions[i].estimatedCost == 0 then
+                cpuLog("actions is already completed, removing...")
+                table.remove(self.actions, i)
+            end
         end
 
         local i = 1
         while i <= #self.actions and self.actions[i].estimatedCost == self.actions[1].estimatedCost do
             self.actions[i]:calculateExecution(self.stack.cur_row, self.stack.cur_col + 0.5)
-            print(i)
             table.insert(actions, self.actions[i])
             i = i+1
         end
@@ -225,7 +331,6 @@ function CPU1.getCheapestAction(self)
     else
         return Raise()
     end
-    
 end
 
 -- returns a 2 dimensional array where i is rownumber (bottom to top), index of j is panel color and value is the amount of panels of that color in the row
@@ -253,14 +358,14 @@ end
 -- may still be faulty if the panels coincidently fall into a chain
 -- should be dropped once the CPU is capable of properly tracking the panels for its current action.
 -- function simulatePostFallingState(panels)
---     print("simulating post falling state")
+--     cpuLog("simulating post falling state")
 --     -- go down from top to bottom and reinsert any 0s after finding a non 0 at the top
---     print("columns = " .. #panels[1])
---     print("rows = " .. #panels)
+--     cpuLog("columns = " .. #panels[1])
+--     cpuLog("rows = " .. #panels)
 --     for i=1,#panels[1] do
 --         local panelFound = false
 --         for j=#panels,1,-1 do
---             print("panel at coordinate " .. j .. "|" .. i .. " has color " .. panels[j][i].color)
+--             cpuLog("panel at coordinate " .. j .. "|" .. i .. " has color " .. panels[j][i].color)
 --             if panels[j][i].color == 0 then
 --                 if panelFound then
 --                     table.remove(panels[j], i)
@@ -283,7 +388,7 @@ function CPU1.printAsAprilStack(self)
                 panelString = panelString.. (tostring(panels[i][j].color))
             end
         end
-        print("april panelstring is " .. panelString)
+        cpuLog("april panelstring is " .. panelString)
 
         panelString = ""
         for i=#panels,1,-1 do
@@ -294,16 +399,9 @@ function CPU1.printAsAprilStack(self)
             end
         end
 
-        print("panels in non-normal state are " .. panelString)
+        cpuLog("panels in non-normal state are " .. panelString)
     end  
 end
-
-Raise = class(function(action)
-    Action.init()
-    action.estimatedCost = 0
-    action.executionPath = { raise, wait }
-end, Action)
-
 Action = class(function(action, panels)
     action.panels = panels
     action.garbageValue = 0
@@ -311,7 +409,23 @@ Action = class(function(action, panels)
     action.estimatedCost = 0
     action.executionPath = nil
     action.isClear = false
+    action.name = "unknown action"
 end)
+
+function Action.print(self)
+    cpuLog("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
+    if self.panels then
+        for i=1,#self.panels do
+            self.panels[i]:print()
+        end
+    end
+
+    if self.executionPath then
+        for i = 1, #self.executionPath do
+            cpuLog("element " .. i .." of executionpath is " ..self.executionPath[i])
+        end
+    end
+end
 
 function Action.addCursorMovementToExecution(self, gridVector)
     error("addCursorMovementToExecution was not implemented for action " ..self.name)
@@ -341,40 +455,44 @@ ActionPanel = class(function(actionPanel, color, row, column)
 end)
 
 function ActionPanel.print(self)
-    print("panel with color " .. self.color .. " at coordinate " .. self.row .. "|" .. self.column)
+    cpuLog("panel with color " .. self.color .. " at coordinate " .. self.row .. "|" .. self.column)
 end
 
+function ActionPanel.copy(self)
+    local panel =  ActionPanel(self.color, self.row, self.column)
+    panel.cursorStartPos = GridVector(self.cursorStartPos.row, self.cursorStartPos.column)
+    return panel
+end
+
+
+--#region Action implementations go here
+
+Raise = class(function(action)
+    Action.init(action)
+    action.name = "Raise"
+    action.estimatedCost = 0
+    action.executionPath = { raise, wait }
+end, Action)
+
+Match3 = class(function(action, panels)
+    Action.init(action, panels)
+    action.color = panels[1].color
+end, Action)
 
 H3Match = class(function(action, panels)
-    Action.init(action, panels)
+    Match3.init(action, panels)
     action.name = "Horizontal 3 Match"
-    action.color = panels[1].color
-end, Action)
-
-function H3Match.calculateCost(self)
-    self.estimatedCost = 1000
-end
-
-function H3Match.calculateExecution(self, cursor_row, cursor_col)
-    
-end
+    action.targetRow = 0
+end, Match3)
 
 V3Match = class(function(action, panels)
-    Action.init(action, panels)
+    Match3.init(action, panels)
     action.name = "Vertical 3 Match"
-    action.color = panels[1].color
-    action.targetColumn = 0    
-end, Action)
-
-function V3Match.print(self)
-    print("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
-    for i=1,#self.panels do
-        self.panels[i]:print()
-    end
-end
+    action.targetColumn = 0
+end, Match3)
 
 function V3Match.addCursorMovementToExecution(self, gridVector)
-    print("adding cursor movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
+    cpuLog("adding cursor movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
     --vertical movement
     if math.sign(gridVector.row) == 1 then
         for i=1,math.abs(gridVector.row) do
@@ -403,7 +521,7 @@ function V3Match.addCursorMovementToExecution(self, gridVector)
 end
 
 function V3Match.addPanelMovementToExecution(self, gridVector)
-    print("adding panel movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
+    cpuLog("adding panel movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
 
     -- always starting with a swap because it is assumed that we already moved into the correct location for the initial swap
     table.insert(self.executionPath, swap)
@@ -444,56 +562,57 @@ function V3Match.calculateCost(self)
 end
 
 function V3Match.calculateExecution(self, cursor_row, cursor_col)
-    print("calculating execution path for action " .. self.name)
-    print("action has " .. #self.panels .. " panels")
-    print("with color " .. self.color .. " in column " .. self.targetColumn)
-    print("panel 1 is at coordinates " .. self.panels[1].row .. "|" .. self.panels[1].column)
-    print("panel 2 is at coordinates " .. self.panels[2].row .. "|" .. self.panels[2].column)
-    print("panel 3 is at coordinates " .. self.panels[3].row .. "|" .. self.panels[3].column)
+    cpuLog("calculating execution path for action " .. self.name)
+    cpuLog("action has " .. #self.panels .. " panels")
+    cpuLog("with color " .. self.color .. " in column " .. self.targetColumn)
+    cpuLog("panel 1 is at coordinates " .. self.panels[1].row .. "|" .. self.panels[1].column)
+    cpuLog("panel 2 is at coordinates " .. self.panels[2].row .. "|" .. self.panels[2].column)
+    cpuLog("panel 3 is at coordinates " .. self.panels[3].row .. "|" .. self.panels[3].column)
 
     self.executionPath = {}
 
     local panelsToMove = self:getPanelsToMove()
-    print("found " ..#panelsToMove .. " panels to move")
+    cpuLog("found " ..#panelsToMove .. " panels to move")
     -- cursor_col is the column of the left part of the cursor
     local cursorVec = GridVector(cursor_row, cursor_col)
-    print("cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
+    cpuLog("cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
     while (#panelsToMove > 0)
     do
         panelsToMove = self:sortByDistanceToCursor(panelsToMove, cursorVec)
-        local nextPanel = panelsToMove[1]
-        print("nextPanel cursorstartpos is " ..nextPanel.cursorStartPos.row .."|"..nextPanel.cursorStartPos.column)
+        local nextPanel = panelsToMove[1]:copy()
+        cpuLog("nextPanel cursorstartpos is " ..nextPanel.cursorStartPos.row .."|"..nextPanel.cursorStartPos.column)
         local moveToPanelVec = cursorVec:difference(nextPanel.cursorStartPos)
-        print("difference vec is " ..moveToPanelVec.row .. "|" ..moveToPanelVec.column)
+        cpuLog("difference vec is " ..moveToPanelVec.row .. "|" ..moveToPanelVec.column)
         self:addCursorMovementToExecution(moveToPanelVec)
         local movePanelVec = GridVector(0, self.targetColumn - nextPanel.column)
-        print("panel movement vec is " ..movePanelVec.row .. "|" ..movePanelVec.column)
+        cpuLog("panel movement vec is " ..movePanelVec.row .. "|" ..movePanelVec.column)
         self:addPanelMovementToExecution(movePanelVec)
         -- assuming we arrived with this panel
         nextPanel.column = self.targetColumn
         -- update the cursor position for the next round
-        cursorVec = cursorVec:substract(moveToPanelVec):add(GridVector(0, movePanelVec.column + math.sign(movePanelVec.column)))
-        print("next cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
+        cursorVec = cursorVec:substract(moveToPanelVec):add(GridVector(0, movePanelVec.column - math.sign(movePanelVec.column)))
+        cpuLog("next cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
         --remove the panel we just moved so we don't try moving it again
         table.remove(panelsToMove, 1)
-        print("found " ..#panelsToMove .. " panels to move")
+        cpuLog(#panelsToMove .. " panels left to move")
     end
 
     -- wait at the end of each action to avoid scanning the board again while the last swap is still in progress
-    table.insert(self.executionPath, wait)
-    print("exiting calculateExecution")
+    -- or don't cause we have waitFrames now
+    --table.insert(self.executionPath, wait)
+    cpuLog("exiting calculateExecution")
 end
 
 function V3Match.getPanelsToMove(self)
     local panelsToMove = {}
-    print("#self.panels has " ..#self.panels .. " panels")
-    print("targetColumn is " ..self.targetColumn)
+    cpuLog("#self.panels has " ..#self.panels .. " panels")
+    cpuLog("targetColumn is " ..self.targetColumn)
     for i=1,#self.panels do 
-        print("panel at index " ..i .. " is in column" ..self.panels[i].column)
+        cpuLog("panel at index " ..i .. " is in column" ..self.panels[i].column)
         if self.panels[i].column == self.targetColumn then
-            print(" panel with index " ..i .. " is in the target column, skipping")
+            cpuLog(" panel with index " ..i .. " is in the target column, skipping")
         else
-            print("inserting panel with index " ..i .. " into the table")
+            cpuLog("inserting panel with index " ..i .. " into the table")
             table.insert(panelsToMove, self.panels[i])
         end
     end
@@ -520,7 +639,6 @@ function V3Match.sortByDistanceToCursor(self, panels, cursorVec)
 end
 
 function V3Match.chooseColumn(self)
-    self:print()
     local column
     local minCost = 1000
     for i=1,6 do
@@ -555,10 +673,6 @@ V4Combo = class(function(action, panels)
     action.executionPath = nil
 end)
 
-function V4Combo.calculateCost(self)
-    self.estimatedCost = 1000
-end
-
 V5Combo = class(function(action, panels)
     action.name = "Vertical 5 Combo"
     action.color = panels[1].color
@@ -568,10 +682,6 @@ V5Combo = class(function(action, panels)
     action.estimatedCost = 0
     action.executionPath = nil
 end)
-
-function V5Combo.calculateCost(self)
-    self.estimatedCost = 1000
-end
 
 T5Combo = class(function(action, panels)
     action.name = "T-shaped 5 Combo"
@@ -613,6 +723,10 @@ T7Combo = class(function(action, panels)
     action.executionPath = nil
 end)
 
+--#endregion
+
+
+--#region Helper classes and functions go here
 
 GridVector = class(function(vector, row, column)
     vector.row = row
@@ -639,3 +753,19 @@ end
 function math.sign(x)
     return x > 0 and 1 or x < 0 and -1 or 0
 end
+
+-- a glorified print that can be turned on/off via the cpu configuration
+function cpuLog(...)
+    if not active_cpuConfig or active_cpuConfig["Log"] then
+        print(...)
+    end
+end
+
+function print_config(someConfig)
+    print("print config")
+    for key, value in pairs (someConfig) do
+        print('\t', key, value)
+    end
+end
+
+--#endregion
