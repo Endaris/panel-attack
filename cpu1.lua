@@ -3,8 +3,8 @@ cpu_configs = {
     {
         ReadingBehaviour =  "WaitAll",
         Log = true,
-        MoveRateLimit = 40,
-        MoveSwapRateLimit = 40,
+        MoveRateLimit = 15,
+        MoveSwapRateLimit = 25,
     },
     ["DummyTestOption"] =
     {
@@ -303,7 +303,12 @@ function CPU1.chooseAction(self)
     end
 
     cpuLog("chose following action")
-    self.currentAction:print()
+    if self.currentAction then
+        self.currentAction:print()
+    else
+        cpuLog("chosen action is nil")
+    end
+    
 
     self.inputQueue = self.currentAction.executionPath
 end
@@ -457,28 +462,24 @@ Action = class(function(action, panels)
 end)
 
 function Action.print(self)
-    if self then
-        cpuLog("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
-        if self.panels then
-            for i=1,#self.panels do
-                self.panels[i]:print()
-            end
+    cpuLog("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
+    if self.panels then
+        for i=1,#self.panels do
+            self.panels[i]:print()
         end
+    end
 
-        if self.executionPath then
-            for i = 1, #self.executionPath do
-                cpuLog("element " .. i .." of executionpath is " ..self.executionPath[i])
-            end
+    if self.executionPath then
+        for i = 1, #self.executionPath do
+            cpuLog("element " .. i .." of executionpath is " ..self.executionPath[i])
         end
-    else
-        cpuLog("printed action is nil")
     end
 end
 
 function Action.getPanelsToMove(self)
     local panelsToMove = {}
     cpuLog("#self.panels has " ..#self.panels .. " panels")
-    for i=1,#self.panels do 
+    for i=1,#self.panels do
         cpuLog("printing panel with index " .. i)
         self.panels[i]:print()
 
