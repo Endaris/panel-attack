@@ -183,7 +183,8 @@ function CPU1.finalizeCurrentAction(self)
         --  waitFrames = 0
         end
     else
-        -- no panels -> must be a raise
+        -- no panels -> must be a raise, 10 is a number found through experimentation when the raise is reliably completed
+        -- otherwise the cpu will spam so much that you get a double raise
         waitFrames = 10
     end
 
@@ -204,19 +205,29 @@ function CPU1.findActions(self)
         local colorConsecutivePanels = {}
         for i=1,#grid do       
             -- horizontal 3 matches
-            --  if grid[i][j] >= 3 then
-            --     --fetch the actual panels
-            --     cpuLog("found horizontal 3 match in row " .. i .. " for color " .. j)
-            --     local actionPanels = {}
-            --     for k=1, #self.stack.panels[i] do
-            --         if self.stack.panels[i][k].color == j then
-            --             local actionPanel = ActionPanel(j, i, k)
-            --             table.insert(actionPanels, actionPanel)
-            --         end
-            --     end
-            --     --create the action and put it in our list
-            --     table.insert(self.actions, H3Match(actionPanels))
-            --  end
+             if grid[i][j] >= 3 then
+                --fetch the actual panels
+                cpuLog("found horizontal 3 match in row " .. i .. " for color " .. j)
+                local panels = {}
+                for k=1, #self.stack.panels[i] do
+                    if self.stack.panels[i][k].color == j then
+                        local actionPanel = ActionPanel(j, i, k)
+                        table.insert(panels, actionPanel)
+                    end
+                end
+
+                -- if there are 4 in the row, add 2 actions
+                for n=1,#panels-2 do
+                    local actionPanels = {}
+
+                    table.insert(actionPanels, panels[n]:copy())
+                    table.insert(actionPanels, panels[n+1]:copy())
+                    table.insert(actionPanels, panels[n+2]:copy())
+                    
+                     --create the action and put it in our list
+                    table.insert(self.actions, H3Match(actionPanels))
+                end
+             end
              -- vertical 3 matches
              if grid[i][j] > 0 then
                 colorConsecutiveRowCount = colorConsecutiveRowCount + 1
@@ -236,9 +247,9 @@ function CPU1.findActions(self)
                         for r=1,#colorConsecutivePanels[colorConsecutiveRowCount - 1] do                    
                             for s=1,#colorConsecutivePanels[colorConsecutiveRowCount] do
                                 local panels = {}
-                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 2][q])
-                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 1][r])
-                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount][s])
+                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 2][q]:copy())
+                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 1][r]:copy())
+                                table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount][s]:copy())
                                 table.insert(self.actions, V3Match(panels))
                             end
                         end
@@ -256,8 +267,6 @@ function CPU1.findActions(self)
                 colorConsecutiveRowCount = 0
                 consecutivePanels = {}
              end
-             
-             
          end
      end
 end
@@ -400,8 +409,43 @@ function CPU1.printAsAprilStack(self)
         end
 
         cpuLog("panels in non-normal state are " .. panelString)
-    end  
+    end
 end
+
+ActionPanel = class(function(actionPanel, color, row, column)
+    actionPanel.color = color
+    actionPanel.row = row
+    actionPanel.column = column
+    actionPanel.vector = GridVector(row, column)
+    actionPanel.targetVector = nil
+    actionPanel.cursorStartPos = nil
+    actionPanel.isSetupPanel = false
+    actionPanel.isExecutionPanel = false
+end)
+
+function ActionPanel.print(self)
+    local message = "panel with color " .. self.color .. " at coordinate " .. self.vector:toString()
+    if self.targetVector then
+        message = message .. " with targetVector " .. self.targetVector:toString()
+    end
+    cpuLog(message)
+end
+
+function ActionPanel.copy(self)
+    local panel =  ActionPanel(self.color, self.row, self.column)
+    if self.cursorStartPos then
+        panel.cursorStartPos = GridVector(self.cursorStartPos.row, self.cursorStartPos.column)
+    end
+    if self.targetVector then
+        panel.targetVector = GridVector(self.targetVector.row, self.targetVector.column)
+    end
+    return panel
+end
+
+function ActionPanel.needsToMove(self)
+    return not self.vector:equals(self.targetVector)
+end
+
 Action = class(function(action, panels)
     action.panels = panels
     action.garbageValue = 0
@@ -413,86 +457,62 @@ Action = class(function(action, panels)
 end)
 
 function Action.print(self)
-    cpuLog("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
-    if self.panels then
-        for i=1,#self.panels do
-            self.panels[i]:print()
+    if self then
+        cpuLog("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
+        if self.panels then
+            for i=1,#self.panels do
+                self.panels[i]:print()
+            end
+        end
+
+        if self.executionPath then
+            for i = 1, #self.executionPath do
+                cpuLog("element " .. i .." of executionpath is " ..self.executionPath[i])
+            end
+        end
+    else
+        cpuLog("printed action is nil")
+    end
+end
+
+function Action.getPanelsToMove(self)
+    local panelsToMove = {}
+    cpuLog("#self.panels has " ..#self.panels .. " panels")
+    for i=1,#self.panels do 
+        cpuLog("printing panel with index " .. i)
+        self.panels[i]:print()
+
+        if self.panels[i]:needsToMove() then
+            cpuLog("inserting panel with index " ..i .. " into the table")
+            table.insert(panelsToMove, self.panels[i])
+        else
+            cpuLog(" panel with index " ..i .. " is already at the desired coordinate, skipping")
         end
     end
 
-    if self.executionPath then
-        for i = 1, #self.executionPath do
-            cpuLog("element " .. i .." of executionpath is " ..self.executionPath[i])
+    return panelsToMove
+end
+
+function Action.sortByDistanceToCursor(self, panels, cursorVec)
+    --setting the correct cursor position for starting to work on each panel here
+    for i=1,#panels do
+        local panel = panels[i]
+        if panel.vector.column > panel.targetVector.column then
+            panel.cursorStartPos = GridVector(panel.row, panel.column - 0.5)
+        else
+            panel.cursorStartPos = GridVector(panel.row, panel.column + 0.5)
         end
     end
+
+    table.sort(panels, function(a, b)
+        return cursorVec:distance(a.cursorStartPos) < cursorVec:distance(b.cursorStartPos)
+    end)
+
+    return panels
 end
 
 function Action.addCursorMovementToExecution(self, gridVector)
-    error("addCursorMovementToExecution was not implemented for action " ..self.name)
-
-end
-
-function Action.addPanelMovementToExecution(self, gridVector)
-    error("addCursorMovementToExecution was not implemented for action " ..self.name)
-end
-
-function Action.calculateExecution(self, cursor_row, cursor_col)
-    error("calculateExecution was not implemented for action " ..self.name)
-end
-
-function Action.calculateCost(self)
-    error("calculateCost was not implemented for action " ..self.name)
-end
-
-ActionPanel = class(function(actionPanel, color, row, column)
-    actionPanel.color = color
-    actionPanel.row = row
-    actionPanel.column = column
-    actionPanel.vector = GridVector(row, column)
-    actionPanel.cursorStartPos = nil
-    actionPanel.isSetupPanel = false
-    actionPanel.isExecutionPanel = false
-end)
-
-function ActionPanel.print(self)
-    cpuLog("panel with color " .. self.color .. " at coordinate " .. self.row .. "|" .. self.column)
-end
-
-function ActionPanel.copy(self)
-    local panel =  ActionPanel(self.color, self.row, self.column)
-    panel.cursorStartPos = GridVector(self.cursorStartPos.row, self.cursorStartPos.column)
-    return panel
-end
-
-
---#region Action implementations go here
-
-Raise = class(function(action)
-    Action.init(action)
-    action.name = "Raise"
-    action.estimatedCost = 0
-    action.executionPath = { raise, wait }
-end, Action)
-
-Match3 = class(function(action, panels)
-    Action.init(action, panels)
-    action.color = panels[1].color
-end, Action)
-
-H3Match = class(function(action, panels)
-    Match3.init(action, panels)
-    action.name = "Horizontal 3 Match"
-    action.targetRow = 0
-end, Match3)
-
-V3Match = class(function(action, panels)
-    Match3.init(action, panels)
-    action.name = "Vertical 3 Match"
-    action.targetColumn = 0
-end, Match3)
-
-function V3Match.addCursorMovementToExecution(self, gridVector)
-    cpuLog("adding cursor movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
+    cpuLog("adding cursor movement to the input queue with vector" ..gridVector:toString())
     --vertical movement
     if math.sign(gridVector.row) == 1 then
         for i=1,math.abs(gridVector.row) do
@@ -520,8 +540,8 @@ function V3Match.addCursorMovementToExecution(self, gridVector)
     end
 end
 
-function V3Match.addPanelMovementToExecution(self, gridVector)
-    cpuLog("adding panel movement to the input queue with vector" ..gridVector.row .. "|" ..gridVector.column)
+function Action.addPanelMovementToExecution(self, gridVector)
+    cpuLog("adding panel movement to the input queue with vector" ..gridVector:toString())
 
     -- always starting with a swap because it is assumed that we already moved into the correct location for the initial swap
     table.insert(self.executionPath, swap)
@@ -557,17 +577,31 @@ function V3Match.addPanelMovementToExecution(self, gridVector)
     end
 end
 
-function V3Match.calculateCost(self)
-    self:chooseColumn()
+function Action.calculateCost(self)
+    error("calculateCost was not implemented for action " ..self.name)
 end
 
-function V3Match.calculateExecution(self, cursor_row, cursor_col)
+function Action.calculateExecution(self, cursor_row, cursor_col)
+    error("calculateExecution was not implemented for action " ..self.name)
+end
+
+--#region Action implementations go here
+
+Raise = class(function(action)
+    Action.init(action)
+    action.name = "Raise"
+    action.estimatedCost = 0
+    action.executionPath = { raise, wait }
+end, Action)
+
+Match3 = class(function(action, panels)
+    Action.init(action, panels)
+    action.color = panels[1].color
+end, Action)
+
+function Match3.calculateExecution(self, cursor_row, cursor_col)
     cpuLog("calculating execution path for action " .. self.name)
-    cpuLog("action has " .. #self.panels .. " panels")
-    cpuLog("with color " .. self.color .. " in column " .. self.targetColumn)
-    cpuLog("panel 1 is at coordinates " .. self.panels[1].row .. "|" .. self.panels[1].column)
-    cpuLog("panel 2 is at coordinates " .. self.panels[2].row .. "|" .. self.panels[2].column)
-    cpuLog("panel 3 is at coordinates " .. self.panels[3].row .. "|" .. self.panels[3].column)
+    self:print()
 
     self.executionPath = {}
 
@@ -575,23 +609,21 @@ function V3Match.calculateExecution(self, cursor_row, cursor_col)
     cpuLog("found " ..#panelsToMove .. " panels to move")
     -- cursor_col is the column of the left part of the cursor
     local cursorVec = GridVector(cursor_row, cursor_col)
-    cpuLog("cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
+    cpuLog("cursor vec is " ..cursorVec:toString())
     while (#panelsToMove > 0)
     do
         panelsToMove = self:sortByDistanceToCursor(panelsToMove, cursorVec)
         local nextPanel = panelsToMove[1]:copy()
-        cpuLog("nextPanel cursorstartpos is " ..nextPanel.cursorStartPos.row .."|"..nextPanel.cursorStartPos.column)
+        cpuLog("nextPanel cursorstartpos is " ..nextPanel.cursorStartPos:toString())
         local moveToPanelVec = cursorVec:difference(nextPanel.cursorStartPos)
-        cpuLog("difference vec is " ..moveToPanelVec.row .. "|" ..moveToPanelVec.column)
+        cpuLog("difference vec is " ..moveToPanelVec:toString())
         self:addCursorMovementToExecution(moveToPanelVec)
-        local movePanelVec = GridVector(0, self.targetColumn - nextPanel.column)
-        cpuLog("panel movement vec is " ..movePanelVec.row .. "|" ..movePanelVec.column)
+        local movePanelVec = GridVector(0, nextPanel.targetVector.column - nextPanel.vector.column)
+        cpuLog("panel movement vec is " ..movePanelVec:toString())
         self:addPanelMovementToExecution(movePanelVec)
-        -- assuming we arrived with this panel
-        nextPanel.column = self.targetColumn
         -- update the cursor position for the next round
         cursorVec = cursorVec:substract(moveToPanelVec):add(GridVector(0, movePanelVec.column - math.sign(movePanelVec.column)))
-        cpuLog("next cursor vec is " ..cursorVec.row .. "|" ..cursorVec.column)
+        cpuLog("next cursor vec is " ..cursorVec:toString())
         --remove the panel we just moved so we don't try moving it again
         table.remove(panelsToMove, 1)
         cpuLog(#panelsToMove .. " panels left to move")
@@ -603,39 +635,37 @@ function V3Match.calculateExecution(self, cursor_row, cursor_col)
     cpuLog("exiting calculateExecution")
 end
 
-function V3Match.getPanelsToMove(self)
-    local panelsToMove = {}
-    cpuLog("#self.panels has " ..#self.panels .. " panels")
-    cpuLog("targetColumn is " ..self.targetColumn)
-    for i=1,#self.panels do 
-        cpuLog("panel at index " ..i .. " is in column" ..self.panels[i].column)
-        if self.panels[i].column == self.targetColumn then
-            cpuLog(" panel with index " ..i .. " is in the target column, skipping")
-        else
-            cpuLog("inserting panel with index " ..i .. " into the table")
-            table.insert(panelsToMove, self.panels[i])
+H3Match = class(function(action, panels)
+    Match3.init(action, panels)
+    action.name = "Horizontal 3 Match"
+    action.targetRow = 0
+end, Match3)
+
+function H3Match.calculateCost(self)
+    -- always pick the panel in the middle as the one that doesn't need to get moved
+    local middlePanelColumn = self.panels[2].vector.column
+    self.panels[1].targetVector = GridVector(self.panels[1].vector.row, middlePanelColumn - 1)
+    self.panels[2].targetVector = GridVector(self.panels[2].vector.row, middlePanelColumn)
+    self.panels[3].targetVector = GridVector(self.panels[3].vector.row, middlePanelColumn + 1)
+
+    self.estimatedCost = 0
+    for i=1,#self.panels do
+        local distance = math.abs(self.panels[i].targetVector.column - self.panels[i].vector.column)
+        if distance > 0 then
+            self.estimatedCost = self.estimatedCost + 2
+            self.estimatedCost = self.estimatedCost + distance
         end
     end
-
-    return panelsToMove
 end
 
-function V3Match.sortByDistanceToCursor(self, panels, cursorVec)
-    --setting the correct cursor position for starting to work on each panel here
-    for i=1,#panels do
-        local panel = panels[i]
-        if panel.column > self.targetColumn then
-            panel.cursorStartPos = GridVector(panel.row, panel.column - 0.5)
-        else
-            panel.cursorStartPos = GridVector(panel.row, panel.column + 0.5)
-        end      
-    end
+V3Match = class(function(action, panels)
+    Match3.init(action, panels)
+    action.name = "Vertical 3 Match"
+    action.targetColumn = 0
+end, Match3)
 
-    table.sort(panels, function(a, b)
-        return cursorVec:distance(a.cursorStartPos) < cursorVec:distance(b.cursorStartPos)
-    end)
-    
-    return panels
+function V3Match.calculateCost(self)
+    self:chooseColumn()
 end
 
 function V3Match.chooseColumn(self)
@@ -661,6 +691,12 @@ function V3Match.chooseColumn(self)
 
     self.estimatedCost = minCost
     self.targetColumn = column
+    cpuLog("chose targetColumn " ..self.targetColumn)
+    cpuLog("setting target vectors for V3Match " ..self.targetColumn)
+    for i=1,#self.panels do
+        self.panels[i].targetVector = GridVector(self.panels[i].row, self.targetColumn)
+        self.panels[i]:print()
+    end
 end
 
 V4Combo = class(function(action, panels)
@@ -748,6 +784,14 @@ end
 
 function GridVector.substract(self, otherVec)
     return GridVector(self.row - otherVec.row, self.column - otherVec.column)
+end
+
+function GridVector.equals(self, otherVec)
+    return self.row == otherVec.row and self.column == otherVec.column
+end
+
+function GridVector.toString(self)
+    return self.row .. "|" .. self.column
 end
 
 function math.sign(x)
