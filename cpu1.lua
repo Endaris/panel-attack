@@ -131,13 +131,13 @@ function CPU1.updateStack(self, stack)
     self:evaluate()
 end
 
-function CPU1.evaluate(self)    
+function CPU1.evaluate(self)
     if #self.inputQueue == 0 then
         if self.currentAction then
             self:finalizeCurrentAction()
         end
 
-        if self.waitFrames <= 0 then          
+        if self.waitFrames <= 0 then
             if #self.actionQueue == 0 then
                 -- this part should go into a subroutine later so that calculations can be done over multiple frames
                 self:findActions()
@@ -148,7 +148,6 @@ function CPU1.evaluate(self)
             self.waitFrames = self.waitFrames - 1
         end
     end
-    
 end
 
 function CPU1.finalizeCurrentAction(self)
@@ -203,7 +202,7 @@ function CPU1.findActions(self)
     for j=1,#grid[1] do
         local colorConsecutiveRowCount = 0
         local colorConsecutivePanels = {}
-        for i=1,#grid do       
+        for i=1,#grid do
             -- horizontal 3 matches
              if grid[i][j] >= 3 then
                 --fetch the actual panels
@@ -244,7 +243,7 @@ function CPU1.findActions(self)
                     cpuLog("found " ..combinations .. " combination(s) for a vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
 
                     for q=1,#colorConsecutivePanels[colorConsecutiveRowCount - 2] do
-                        for r=1,#colorConsecutivePanels[colorConsecutiveRowCount - 1] do                    
+                        for r=1,#colorConsecutivePanels[colorConsecutiveRowCount - 1] do
                             for s=1,#colorConsecutivePanels[colorConsecutiveRowCount] do
                                 local panels = {}
                                 table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 2][q]:copy())
@@ -265,7 +264,7 @@ function CPU1.findActions(self)
                 -- end
              else
                 colorConsecutiveRowCount = 0
-                consecutivePanels = {}
+                colorConsecutivePanels = {}
              end
          end
      end
@@ -305,19 +304,17 @@ function CPU1.chooseAction(self)
     cpuLog("chose following action")
     if self.currentAction then
         self.currentAction:print()
+        self.inputQueue = self.currentAction.executionPath
     else
         cpuLog("chosen action is nil")
     end
-    
-
-    self.inputQueue = self.currentAction.executionPath
 end
 
 function CPU1.getCheapestAction(self)
     local actions = {}
 
     if #self.actions > 0 then
-        table.sort(self.actions, function(a,b) 
+        table.sort(self.actions, function(a,b)
             return a.estimatedCost < b.estimatedCost
         end)
 
@@ -408,7 +405,7 @@ function CPU1.printAsAprilStack(self)
         for i=#panels,1,-1 do
             for j=1,#panels[1] do
                 if not panels[i][j].state == "normal" then
-                    panelString = panelString.. (tostring(panels[i][j].color))    
+                    panelString = panelString.. (tostring(panels[i][j].color))
                 end
             end
         end
