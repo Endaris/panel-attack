@@ -5,6 +5,7 @@ cpu_configs = {
         Log = true,
         MoveRateLimit = 15,
         MoveSwapRateLimit = 25,
+        DefragmentationPercentageThreshold = 0.3
     },
     ["DummyTestOption"] =
     {
@@ -12,6 +13,7 @@ cpu_configs = {
         Log = false,
         MoveRateLimit = 40,
         MoveSwapRateLimit = 40,
+        DefragmentationPercentageThreshold = 0.3
     }
 }
 
@@ -22,6 +24,7 @@ CPU1Config = class(function(cpuConfig, actualConfig)
     cpuConfig.Log = actualConfig["Log"]
     cpuConfig.MoveRateLimit = actualConfig["MoveRateLimit"]
     cpuConfig.MoveSwapRateLimit = actualConfig["MoveSwapRateLimit"]
+    cpuConfig.DefragmentationPercentageThreshold = actualConfig["DefragmentationPercentageThreshold"]
 end)
 
 
@@ -30,6 +33,7 @@ CPU1 = class(function(cpu)
     cpu.cursorChanged = false
     cpu.actions = {}
     cpu.currentAction = nil
+    cpu.strategy = nil
     cpu.actionQueue = {}
     cpu.inputQueue = {}
     cpu.idleFrames = 0
@@ -67,6 +71,11 @@ local doubleInsert = 512
 --technically more than just a swap, combine this with the direction to find out in which direction the stealth is going
 --the CPU should make sure to save up enough idleframes for all moves and then perform the inputs in one go
 local stealth = 1024
+
+--strategies
+local attack = 0
+local defend = 1
+local defragment = 2
 
 function isMovement(input)
     --innocently assuming we never input a direction together with something else unless it's a special that includes a timed swap anyway (doubleInsert,stealth)
@@ -140,6 +149,7 @@ function CPU1.evaluate(self)
         if self.waitFrames <= 0 then
             if #self.actionQueue == 0 then
                 -- this part should go into a subroutine later so that calculations can be done over multiple frames
+                self.strategy = self:chooseStrategy()
                 self:findActions()
                 self:calculateCosts()
             end
@@ -183,7 +193,7 @@ function CPU1.finalizeCurrentAction(self)
         end
     else
         -- no panels -> must be a raise, 10 is a number found through experimentation when the raise is reliably completed
-        -- otherwise the cpu will spam so much that you get a double raise
+        -- otherwise the cpu won't detect the rais in time and try to raise again so you get a double raise
         waitFrames = 10
     end
 
@@ -192,6 +202,18 @@ function CPU1.finalizeCurrentAction(self)
 
     -- action is now fully wrapped up
     self.currentAction = nil
+end
+
+function CPU1.chooseStrategy(self)
+    if self.stack.danger_music then
+        return defend
+    end
+
+    if self.stack:getFragmentationPercentage() > self.config.DefragmentationPercentageThreshold then
+        return defragment
+    end
+
+    return attack
 end
 
 function CPU1.findActions(self)
@@ -301,8 +323,8 @@ function CPU1.chooseAction(self)
         end
     end
 
-    cpuLog("chose following action")
     if self.currentAction then
+        cpuLog("chose following action")
         self.currentAction:print()
         self.inputQueue = self.currentAction.executionPath
     else
@@ -809,5 +831,133 @@ function print_config(someConfig)
         print('\t', key, value)
     end
 end
+
+--#endregion
+
+--#region Stackextensions
+
+-- returns the maximum number of panels connected in a MxN rectangle shape
+-- where M >= 2 and N >= 3 divided through the total number of panels on the board
+-- a panel counts as connected if you can move it along that block without it dropping rows
+-- 1 - N_connectedpanels / N_totalpanels
+function Stack.getFragmentationPercentage(self)
+    local connectedPanels = self:getMaxConnectedTier1Panels()
+    local totalPanels = self:getTotalTier1Panels()
+
+    return 1 - (connectedPanels / totalPanels)
+end
+
+--gets all panels in the stack that are in the first tier of the stack
+function Stack.getTotalTier1Panels(self)
+    local panelCount = 0
+
+    local bottomGarbageRowIndex = self:getBottomGarbageRowIndex()
+
+    for i=1,bottomGarbageRowIndex do
+        for j=1,#self.panels[i] do
+            local panel = self.panels[i][j]
+            if panel.color > 0 and panel.color < 9 then
+                if panel.state = "normal" or panel.state = "hovering" 
+                or panel.state = "falling" or panel.state = "landing" then
+                    panelCount = panelCount + 1
+                end
+            end
+        end
+    end
+
+    return panelCount
+end
+
+-- returns the maximum number of panels connected in a MxN rectangle shape in the first tier of the stack
+-- where M >= 2 and N >= 3 divided through the total number of panels on the board
+-- a panel counts as connected if you can move it along that block without it dropping rows
+function Stack.getMaxConnectedTier1Panels(self)
+    local maximumConnectedPanelCount = 0
+
+    local bottomGarbageRowIndex = self:getBottomGarbageRowIndex()
+
+    local columns = {}
+    -- first transforming into a column representation 
+    if self.panels and self.panels[1] then
+        for i=1,#self.panels[1] do
+            columns[i] = {}
+            for j=1,bottomGarbageRowIndex do
+                if panel.color > 0 and panel.color < 9 then
+                    if panel.state = "normal" or panel.state = "hovering" or
+                       panel.state = "falling" or panel.state = "landing" then
+                        columns[i][j] = self.panels[j][i]
+                    end
+                end
+            end
+        end
+    end
+
+    for i=1,#columns - 1 do
+        local baseHeight = #columns[i] 
+
+        if baseHeight > 1 then
+            for j=i+1,#columns do
+                if not #columns[j] > 1 and #columns[j] > baseHeight - 2 then
+                    --not sufficing the criteria of N >= 2
+                    if j - 1 = i then
+                        break
+                    else
+                        local connectedPanelCount = 0
+                        for k=i,j do
+                            connectedPanelCount = connectedPanelCount + #columns[k]
+                        end
+                        -- not sufficing the criteria of M >= 3 (only one column needs to be 3 high)
+                        if connectedPanelCount / (j - i) = 2 then
+                            break
+                        else
+                            if connectedPanelCount > maximumConnectedPanelCount then
+                                maximumConnectedPanelCount = connectedPanelCount
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return maximumConnectedPanelCount
+end
+
+function Stack.getBottomGarbageRowIndex(self)
+    local bottomGarbageRowIndex = 13
+
+    for i=1,#self.panels do 
+        -- assuming 6 columns here, not working with wider stacks
+        if (self.panels[i][1].color = 9 or self.panels[i][1].color = 0) and
+           (self.panels[i][6].color = 9 or self.panels[i][6].color = 0) then
+            bottomGarbageRowIndex = i
+            break
+        end
+    end
+
+    return bottomGarbageRowIndex
+end
+
+
+
+--@-- returns a 2 dimensional array where i is rownumber (bottom to top), index of j is panel color and value is the amount of panels of that color in the row
+-- function CPU1.panelsToRowGrid(self)
+--     local panels = self.stack.panels
+--     self:printAsAprilStack()
+--     local grid = {}
+--     for i=1,#panels do
+--         grid[i] = {}
+--         -- always use 8: shockpanels appear on every level and we want columnnumber=color number for readability
+--         for j=1,8 do
+--             local count = 0
+--             for k = 1,#panels[1] do
+--                 if panels[i][k].color == j then
+--                     count = count + 1
+--                 end
+--             end
+--             grid[i][j] = count
+--         end
+--     end
+   
 
 --#endregion
