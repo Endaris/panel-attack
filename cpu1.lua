@@ -1,15 +1,13 @@
 cpu_configs = {
-    ["DevConfig"] =
-    {
-        ReadingBehaviour =  "WaitAll",
+    ['DevConfig'] = {
+        ReadingBehaviour = 'WaitAll',
         Log = true,
         MoveRateLimit = 15,
         MoveSwapRateLimit = 25,
         DefragmentationPercentageThreshold = 0.3
     },
-    ["DummyTestOption"] =
-    {
-        ReadingBehaviour =  "WaitAll",
+    ['DummyTestOption'] = {
+        ReadingBehaviour = 'WaitAll',
         Log = false,
         MoveRateLimit = 40,
         MoveSwapRateLimit = 40,
@@ -19,40 +17,45 @@ cpu_configs = {
 
 active_cpuConfig = cpu_configs[1]
 
-CPU1Config = class(function(cpuConfig, actualConfig)
-    cpuConfig.ReadingBehaviour = actualConfig["ReadingBehaviour"]
-    cpuConfig.Log = actualConfig["Log"]
-    cpuConfig.MoveRateLimit = actualConfig["MoveRateLimit"]
-    cpuConfig.MoveSwapRateLimit = actualConfig["MoveSwapRateLimit"]
-    cpuConfig.DefragmentationPercentageThreshold = actualConfig["DefragmentationPercentageThreshold"]
-end)
-
-
-CPU1 = class(function(cpu)
-    cpu.panelsChanged = false
-    cpu.cursorChanged = false
-    cpu.actions = {}
-    cpu.currentAction = nil
-    cpu.strategy = nil
-    cpu.actionQueue = {}
-    cpu.inputQueue = {}
-    cpu.idleFrames = 0
-    cpu.waitFrames = 0
-    cpu.stack = nil
-    cpu.enable_stealth = true
-    cpu.enable_inserts = true
-    cpu.enable_slides = false
-    cpu.enable_catches = false
-    cpu.enable_doubleInsert = false
-    cpu.lastInput = nil
-    if active_cpuConfig then
-        print("cpu config successfully loaded")
-        cpu.config = CPU1Config(active_cpuConfig)
-        print_config(active_cpuConfig)
-    else
-        error("cpu config is nil")
+CPU1Config =
+    class(
+    function(cpuConfig, actualConfig)
+        cpuConfig.ReadingBehaviour = actualConfig['ReadingBehaviour']
+        cpuConfig.Log = actualConfig['Log']
+        cpuConfig.MoveRateLimit = actualConfig['MoveRateLimit']
+        cpuConfig.MoveSwapRateLimit = actualConfig['MoveSwapRateLimit']
+        cpuConfig.DefragmentationPercentageThreshold = actualConfig['DefragmentationPercentageThreshold']
     end
-end)
+)
+
+CPU1 =
+    class(
+    function(cpu)
+        cpu.panelsChanged = false
+        cpu.cursorChanged = false
+        cpu.actions = {}
+        cpu.currentAction = nil
+        cpu.strategy = nil
+        cpu.actionQueue = {}
+        cpu.inputQueue = {}
+        cpu.idleFrames = 0
+        cpu.waitFrames = 0
+        cpu.stack = nil
+        cpu.enable_stealth = true
+        cpu.enable_inserts = true
+        cpu.enable_slides = false
+        cpu.enable_catches = false
+        cpu.enable_doubleInsert = false
+        cpu.lastInput = nil
+        if active_cpuConfig then
+            print('cpu config successfully loaded')
+            cpu.config = CPU1Config(active_cpuConfig)
+            print_config(active_cpuConfig)
+        else
+            error('cpu config is nil')
+        end
+    end
+)
 
 local wait = 0
 --inputs directly as variables cause there are no input devices
@@ -72,11 +75,6 @@ local doubleInsert = 512
 --the CPU should make sure to save up enough idleframes for all moves and then perform the inputs in one go
 local stealth = 1024
 
---strategies
-local attack = 0
-local defend = 1
-local defragment = 2
-
 function isMovement(input)
     --innocently assuming we never input a direction together with something else unless it's a special that includes a timed swap anyway (doubleInsert,stealth)
     if input then
@@ -90,7 +88,7 @@ function CPU1.send_controls(self)
     --the conditions are intentional so that the control flow (specifically the exits) is more obvious rather than having a tail of "else return" where you can't tell where it's coming from
     if not self.stack then
         return self:idle()
-    else    --there is a stack, most basic requirement
+    else --there is a stack, most basic requirement
         if not self.inputQueue or #self.inputQueue == 0 then
             return self:idle()
         else --there is actually something to execute
@@ -130,7 +128,7 @@ end
 
 function CPU1.input(self)
     self.lastInput = table.remove(self.inputQueue, 1)
-    cpuLog("executing input " .. self.lastInput)
+    cpuLog('executing input ' .. self.lastInput)
     self.idleFrames = 0
     return base64encode[self.lastInput + 1]
 end
@@ -141,7 +139,7 @@ function CPU1.updateStack(self, stack)
 end
 
 function CPU1.evaluate(self)
-    if #self.inputQueue == 0 then
+    if self.stack and #self.inputQueue == 0 then
         if self.currentAction then
             self:finalizeCurrentAction()
         end
@@ -162,18 +160,18 @@ end
 
 function CPU1.finalizeCurrentAction(self)
     local waitFrames = 0
-    cpuLog("finalizing action " .. self.currentAction.name)
-    cpuLog("ReadingBehaviour config value is ".. self.config.ReadingBehaviour)
+    cpuLog('finalizing action ' .. self.currentAction.name)
+    cpuLog('ReadingBehaviour config value is ' .. self.config.ReadingBehaviour)
 
     if self.currentAction.panels then
-        if self.config.ReadingBehaviour == "WaitAll" then
+        if self.config.ReadingBehaviour == 'WaitAll' then
             -- constant for completing a swap, see Panel.clear() for reference
             waitFrames = waitFrames + 4
             -- wait for all panels to pop
             waitFrames = waitFrames + level_to_flash[self.stack.level]
             waitFrames = waitFrames + level_to_face[self.stack.level]
             --the first panel is popped at the end of the face part so there's only additional waiting time for each panel beyond the first
-            for i=1,#self.currentAction.panels do
+            for i = 1, #self.currentAction.panels do
                 waitFrames = waitFrames + level_to_pop[self.stack.level]
             end
 
@@ -184,8 +182,7 @@ function CPU1.finalizeCurrentAction(self)
 
             -- 2 frames safety margin cause i'm still finding completed matches
             waitFrames = waitFrames + 2
-         
-        elseif self.config.ReadingBehaviour == "WaitMatch" then
+        elseif self.config.ReadingBehaviour == 'WaitMatch' then
             -- constant for completing a swap, see Panel.clear() for reference
             waitFrames = 4
         --else  cpu.config["ReadingBehaviour"] == "Instantly", default behaviour
@@ -197,7 +194,7 @@ function CPU1.finalizeCurrentAction(self)
         waitFrames = 10
     end
 
-    cpuLog("setting waitframes to " .. waitFrames)
+    cpuLog('setting waitframes to ' .. waitFrames)
     self.waitFrames = waitFrames
 
     -- action is now fully wrapped up
@@ -206,31 +203,33 @@ end
 
 function CPU1.chooseStrategy(self)
     if self.stack.danger_music then
-        return defend
+        return Defend()
     end
 
-    if self.stack:getFragmentationPercentage() > self.config.DefragmentationPercentageThreshold then
-        return defragment
+    local fragmentationPercentage = self.stack:getFragmentationPercentage()
+    cpuLog('Fragmentation % is ' .. fragmentationPercentage)
+    if fragmentationPercentage > self.config.DefragmentationPercentageThreshold then
+        return Defragment()
     end
 
-    return attack
+    return Attack()
 end
 
 function CPU1.findActions(self)
     self.actions = {}
     local grid = self:panelsToRowGrid()
-    
+
     --find matches, i is row, j is panel color, grid[i][j] is the amount of panels of that color in the row, k is the column the panel is in
-    for j=1,#grid[1] do
+    for j = 1, #grid[1] do
         local colorConsecutiveRowCount = 0
         local colorConsecutivePanels = {}
-        for i=1,#grid do
+        for i = 1, #grid do
             -- horizontal 3 matches
-             if grid[i][j] >= 3 then
+            if grid[i][j] >= 3 then
                 --fetch the actual panels
-                cpuLog("found horizontal 3 match in row " .. i .. " for color " .. j)
+                cpuLog('found horizontal 3 match in row ' .. i .. ' for color ' .. j)
                 local panels = {}
-                for k=1, #self.stack.panels[i] do
+                for k = 1, #self.stack.panels[i] do
                     if self.stack.panels[i][k].color == j then
                         local actionPanel = ActionPanel(j, i, k)
                         table.insert(panels, actionPanel)
@@ -238,22 +237,30 @@ function CPU1.findActions(self)
                 end
 
                 -- if there are 4 in the row, add 2 actions
-                for n=1,#panels-2 do
+                for n = 1, #panels - 2 do
                     local actionPanels = {}
 
                     table.insert(actionPanels, panels[n]:copy())
-                    table.insert(actionPanels, panels[n+1]:copy())
-                    table.insert(actionPanels, panels[n+2]:copy())
-                    
-                     --create the action and put it in our list
+                    table.insert(actionPanels, panels[n + 1]:copy())
+                    table.insert(actionPanels, panels[n + 2]:copy())
+
+                    --create the action and put it in our list
                     table.insert(self.actions, H3Match(actionPanels))
                 end
-             end
-             -- vertical 3 matches
-             if grid[i][j] > 0 then
+            end
+            -- vertical 3 matches
+            if grid[i][j] > 0 then
+                -- if colorConsecutiveRowCount >= 4 then
+                --     cpuLog("found vertical 4 combo in row " .. i-3 .. " to " .. i .. " for color " .. j)
+                --     table.insert(self.actions, V4Combo(colorConsecutivePanels))
+                -- end
+                -- if colorConsecutiveRowCount >= 5 then
+                --     cpuLog("found vertical 5 combo in row " .. i-4 .. " to " .. i .. " for color " .. j)
+                --     table.insert(self.actions, V5Combo(colorConsecutivePanels))
+                -- end
                 colorConsecutiveRowCount = colorConsecutiveRowCount + 1
                 colorConsecutivePanels[colorConsecutiveRowCount] = {}
-                for k=1, #self.stack.panels[i] do
+                for k = 1, #self.stack.panels[i] do
                     if self.stack.panels[i][k].color == j then
                         local actionPanel = ActionPanel(j, i, k)
                         table.insert(colorConsecutivePanels[colorConsecutiveRowCount], actionPanel)
@@ -261,12 +268,20 @@ function CPU1.findActions(self)
                 end
                 if colorConsecutiveRowCount >= 3 then
                     -- technically we need action for each unique combination of panels to find the best option
-                    local combinations = #colorConsecutivePanels[colorConsecutiveRowCount - 2] * #colorConsecutivePanels[colorConsecutiveRowCount - 1] * #colorConsecutivePanels[colorConsecutiveRowCount]
-                    cpuLog("found " ..combinations .. " combination(s) for a vertical 3 match in row " .. i-2 .. " to " .. i .. " for color " .. j)
+                    local combinations =
+                        #colorConsecutivePanels[colorConsecutiveRowCount - 2] *
+                        #colorConsecutivePanels[colorConsecutiveRowCount - 1] *
+                        #colorConsecutivePanels[colorConsecutiveRowCount]
+                    cpuLog(
+                        'found ' ..
+                            combinations ..
+                                ' combination(s) for a vertical 3 match in row ' ..
+                                    i - 2 .. ' to ' .. i .. ' for color ' .. j
+                    )
 
-                    for q=1,#colorConsecutivePanels[colorConsecutiveRowCount - 2] do
-                        for r=1,#colorConsecutivePanels[colorConsecutiveRowCount - 1] do
-                            for s=1,#colorConsecutivePanels[colorConsecutiveRowCount] do
+                    for q = 1, #colorConsecutivePanels[colorConsecutiveRowCount - 2] do
+                        for r = 1, #colorConsecutivePanels[colorConsecutiveRowCount - 1] do
+                            for s = 1, #colorConsecutivePanels[colorConsecutiveRowCount] do
                                 local panels = {}
                                 table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 2][q]:copy())
                                 table.insert(panels, colorConsecutivePanels[colorConsecutiveRowCount - 1][r]:copy())
@@ -276,24 +291,16 @@ function CPU1.findActions(self)
                         end
                     end
                 end
-                -- if colorConsecutiveRowCount >= 4 then
-                --     cpuLog("found vertical 4 combo in row " .. i-3 .. " to " .. i .. " for color " .. j)
-                --     table.insert(self.actions, V4Combo(colorConsecutivePanels))
-                -- end
-                -- if colorConsecutiveRowCount >= 5 then
-                --     cpuLog("found vertical 5 combo in row " .. i-4 .. " to " .. i .. " for color " .. j)
-                --     table.insert(self.actions, V5Combo(colorConsecutivePanels))
-                -- end
-             else
+            else
                 colorConsecutiveRowCount = 0
                 colorConsecutivePanels = {}
-             end
-         end
-     end
+            end
+        end
+    end
 end
 
 function CPU1.calculateCosts(self)
-    for i=1,#self.actions do
+    for i = 1, #self.actions do
         self.actions[i]:calculateCost()
     end
 end
@@ -305,15 +312,17 @@ function CPU1.estimateCost(self, action)
 end
 
 function CPU1.chooseAction(self)
-
     if #self.actionQueue > 0 then
         local action = table.remove(self.actionQueue, 1)
         self.currentAction = action
         self.currentAction:calculateExecution()
         self.inputQueue = self.currentAction.executionPath
     else
-        for i=1,#self.actions do
-            cpuLog("Action at index" .. i .. ": " ..self.actions[i].name .." with cost of " ..self.actions[i].estimatedCost)
+        for i = 1, #self.actions do
+            cpuLog(
+                'Action at index' ..
+                    i .. ': ' .. self.actions[i].name .. ' with cost of ' .. self.actions[i].estimatedCost
+            )
         end
 
         if #self.actions > 0 then
@@ -324,11 +333,11 @@ function CPU1.chooseAction(self)
     end
 
     if self.currentAction then
-        cpuLog("chose following action")
+        cpuLog('chose following action')
         self.currentAction:print()
         self.inputQueue = self.currentAction.executionPath
     else
-        cpuLog("chosen action is nil")
+        cpuLog('chosen action is nil')
     end
 end
 
@@ -336,15 +345,18 @@ function CPU1.getCheapestAction(self)
     local actions = {}
 
     if #self.actions > 0 then
-        table.sort(self.actions, function(a,b)
-            return a.estimatedCost < b.estimatedCost
-        end)
+        table.sort(
+            self.actions,
+            function(a, b)
+                return a.estimatedCost < b.estimatedCost
+            end
+        )
 
-        for i=#self.actions, 1,-1 do
+        for i = #self.actions, 1, -1 do
             self.actions[i]:print()
             -- this is a crutch cause sometimes we can find actions that are already completed and then we choose them cause they're already...complete
             if self.actions[i].estimatedCost == 0 then
-                cpuLog("actions is already completed, removing...")
+                cpuLog('actions is already completed, removing...')
                 table.remove(self.actions, i)
             end
         end
@@ -353,12 +365,15 @@ function CPU1.getCheapestAction(self)
         while i <= #self.actions and self.actions[i].estimatedCost == self.actions[1].estimatedCost do
             self.actions[i]:calculateExecution(self.stack.cur_row, self.stack.cur_col + 0.5)
             table.insert(actions, self.actions[i])
-            i = i+1
+            i = i + 1
         end
 
-        table.sort(actions, function(a,b)
-            return #a.executionPath < #b.executionPath
-        end)
+        table.sort(
+            actions,
+            function(a, b)
+                return #a.executionPath < #b.executionPath
+            end
+        )
 
         return actions[1]
     else
@@ -371,12 +386,12 @@ function CPU1.panelsToRowGrid(self)
     local panels = self.stack.panels
     self:printAsAprilStack()
     local grid = {}
-    for i=1,#panels do
+    for i = 1, #panels do
         grid[i] = {}
         -- always use 8: shockpanels appear on every level and we want columnnumber=color number for readability
-        for j=1,8 do
+        for j = 1, 8 do
             local count = 0
-            for k = 1,#panels[1] do
+            for k = 1, #panels[1] do
                 if panels[i][k].color == j then
                     count = count + 1
                 end
@@ -415,48 +430,86 @@ end
 function CPU1.printAsAprilStack(self)
     if self.stack then
         local panels = self.stack.panels
-        local panelString = ""
-        for i=#panels,1,-1 do
-            for j=1,#panels[1] do
-                panelString = panelString.. (tostring(panels[i][j].color))
+        local panelString = ''
+        for i = #panels, 1, -1 do
+            for j = 1, #panels[1] do
+                panelString = panelString .. (tostring(panels[i][j].color))
             end
         end
-        cpuLog("april panelstring is " .. panelString)
+        cpuLog('april panelstring is ' .. panelString)
 
-        panelString = ""
-        for i=#panels,1,-1 do
-            for j=1,#panels[1] do
-                if not panels[i][j].state == "normal" then
-                    panelString = panelString.. (tostring(panels[i][j].color))
+        panelString = ''
+        for i = #panels, 1, -1 do
+            for j = 1, #panels[1] do
+                if not panels[i][j].state == 'normal' then
+                    panelString = panelString .. (tostring(panels[i][j].color))
                 end
             end
         end
 
-        cpuLog("panels in non-normal state are " .. panelString)
+        cpuLog('panels in non-normal state are ' .. panelString)
     end
 end
 
-ActionPanel = class(function(actionPanel, color, row, column)
-    actionPanel.color = color
-    actionPanel.row = row
-    actionPanel.column = column
-    actionPanel.vector = GridVector(row, column)
-    actionPanel.targetVector = nil
-    actionPanel.cursorStartPos = nil
-    actionPanel.isSetupPanel = false
-    actionPanel.isExecutionPanel = false
+
+Strategy = class(function(strategy, name)
+    strategy.name = name
 end)
 
+function Strategy.fillActionQueue(self)
+    error("Method fillActionQueue of strategy " .. self.name .. " has not been implemented.")
+end
+
+Defend = class(
+        function(strategy, name)
+            Strategy.init(strategy, name)
+        end,
+        Strategy
+)
+
+Defragment = class(
+        function(strategy, name)
+            Strategy.init(strategy, name)
+        end,
+        Strategy
+)
+
+Attack = class(
+        function(strategy, name)
+            Strategy.init(strategy, name)
+        end,
+        Strategy
+)
+
+function Attack.fillActionQueue(self)
+
+end
+
+
+ActionPanel =
+    class(
+    function(actionPanel, color, row, column)
+        actionPanel.color = color
+        actionPanel.row = row
+        actionPanel.column = column
+        actionPanel.vector = GridVector(row, column)
+        actionPanel.targetVector = nil
+        actionPanel.cursorStartPos = nil
+        actionPanel.isSetupPanel = false
+        actionPanel.isExecutionPanel = false
+    end
+)
+
 function ActionPanel.print(self)
-    local message = "panel with color " .. self.color .. " at coordinate " .. self.vector:toString()
+    local message = 'panel with color ' .. self.color .. ' at coordinate ' .. self.vector:toString()
     if self.targetVector then
-        message = message .. " with targetVector " .. self.targetVector:toString()
+        message = message .. ' with targetVector ' .. self.targetVector:toString()
     end
     cpuLog(message)
 end
 
 function ActionPanel.copy(self)
-    local panel =  ActionPanel(self.color, self.row, self.column)
+    local panel = ActionPanel(self.color, self.row, self.column)
     if self.cursorStartPos then
         panel.cursorStartPos = GridVector(self.cursorStartPos.row, self.cursorStartPos.column)
     end
@@ -470,43 +523,46 @@ function ActionPanel.needsToMove(self)
     return not self.vector:equals(self.targetVector)
 end
 
-Action = class(function(action, panels)
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-    action.isClear = false
-    action.name = "unknown action"
-end)
+Action =
+    class(
+    function(action, panels)
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+        action.isClear = false
+        action.name = 'unknown action'
+    end
+)
 
 function Action.print(self)
-    cpuLog("printing " ..self.name .. " with estimated cost of " ..self.estimatedCost)
+    cpuLog('printing ' .. self.name .. ' with estimated cost of ' .. self.estimatedCost)
     if self.panels then
-        for i=1,#self.panels do
+        for i = 1, #self.panels do
             self.panels[i]:print()
         end
     end
 
     if self.executionPath then
         for i = 1, #self.executionPath do
-            cpuLog("element " .. i .." of executionpath is " ..self.executionPath[i])
+            cpuLog('element ' .. i .. ' of executionpath is ' .. self.executionPath[i])
         end
     end
 end
 
 function Action.getPanelsToMove(self)
     local panelsToMove = {}
-    cpuLog("#self.panels has " ..#self.panels .. " panels")
-    for i=1,#self.panels do
-        cpuLog("printing panel with index " .. i)
+    cpuLog('#self.panels has ' .. #self.panels .. ' panels')
+    for i = 1, #self.panels do
+        cpuLog('printing panel with index ' .. i)
         self.panels[i]:print()
 
         if self.panels[i]:needsToMove() then
-            cpuLog("inserting panel with index " ..i .. " into the table")
+            cpuLog('inserting panel with index ' .. i .. ' into the table')
             table.insert(panelsToMove, self.panels[i])
         else
-            cpuLog(" panel with index " ..i .. " is already at the desired coordinate, skipping")
+            cpuLog(' panel with index ' .. i .. ' is already at the desired coordinate, skipping')
         end
     end
 
@@ -515,7 +571,7 @@ end
 
 function Action.sortByDistanceToCursor(self, panels, cursorVec)
     --setting the correct cursor position for starting to work on each panel here
-    for i=1,#panels do
+    for i = 1, #panels do
         local panel = panels[i]
         if panel.vector.column > panel.targetVector.column then
             panel.cursorStartPos = GridVector(panel.row, panel.column - 0.5)
@@ -524,22 +580,25 @@ function Action.sortByDistanceToCursor(self, panels, cursorVec)
         end
     end
 
-    table.sort(panels, function(a, b)
-        return cursorVec:distance(a.cursorStartPos) < cursorVec:distance(b.cursorStartPos)
-    end)
+    table.sort(
+        panels,
+        function(a, b)
+            return cursorVec:distance(a.cursorStartPos) < cursorVec:distance(b.cursorStartPos)
+        end
+    )
 
     return panels
 end
 
 function Action.addCursorMovementToExecution(self, gridVector)
-    cpuLog("adding cursor movement to the input queue with vector" ..gridVector:toString())
+    cpuLog('adding cursor movement to the input queue with vector' .. gridVector:toString())
     --vertical movement
     if math.sign(gridVector.row) == 1 then
-        for i=1,math.abs(gridVector.row) do
+        for i = 1, math.abs(gridVector.row) do
             table.insert(self.executionPath, down)
         end
     elseif math.sign(gridVector.row) == -1 then
-        for i=1,math.abs(gridVector.row) do
+        for i = 1, math.abs(gridVector.row) do
             table.insert(self.executionPath, up)
         end
     else
@@ -548,11 +607,11 @@ function Action.addCursorMovementToExecution(self, gridVector)
 
     --horizontal movement
     if math.sign(gridVector.column) == 1 then
-        for i=1,math.abs(gridVector.column) do
+        for i = 1, math.abs(gridVector.column) do
             table.insert(self.executionPath, left)
         end
     elseif math.sign(gridVector.column) == -1 then
-        for i=1,math.abs(gridVector.column) do
+        for i = 1, math.abs(gridVector.column) do
             table.insert(self.executionPath, right)
         end
     else
@@ -561,19 +620,19 @@ function Action.addCursorMovementToExecution(self, gridVector)
 end
 
 function Action.addPanelMovementToExecution(self, gridVector)
-    cpuLog("adding panel movement to the input queue with vector" ..gridVector:toString())
+    cpuLog('adding panel movement to the input queue with vector' .. gridVector:toString())
 
     -- always starting with a swap because it is assumed that we already moved into the correct location for the initial swap
     table.insert(self.executionPath, swap)
     --section needs a rework once moving panels between rows are considered
     --vertical movement
     if math.sign(gridVector.row) == 1 then
-        for i=2,math.abs(gridVector.row) do
+        for i = 2, math.abs(gridVector.row) do
             table.insert(self.executionPath, up)
             table.insert(self.executionPath, swap)
         end
     elseif math.sign(gridVector.row) == -1 then
-        for i=2,math.abs(gridVector.row) do
+        for i = 2, math.abs(gridVector.row) do
             table.insert(self.executionPath, down)
             table.insert(self.executionPath, swap)
         end
@@ -583,12 +642,12 @@ function Action.addPanelMovementToExecution(self, gridVector)
 
     --horizontal movement
     if math.sign(gridVector.column) == 1 then
-        for i=2,math.abs(gridVector.column) do
+        for i = 2, math.abs(gridVector.column) do
             table.insert(self.executionPath, right)
             table.insert(self.executionPath, swap)
         end
     elseif math.sign(gridVector.column) == -1 then
-        for i=2,math.abs(gridVector.column) do
+        for i = 2, math.abs(gridVector.column) do
             table.insert(self.executionPath, left)
             table.insert(self.executionPath, swap)
         end
@@ -598,68 +657,80 @@ function Action.addPanelMovementToExecution(self, gridVector)
 end
 
 function Action.calculateCost(self)
-    error("calculateCost was not implemented for action " ..self.name)
+    error('calculateCost was not implemented for action ' .. self.name)
 end
 
 function Action.calculateExecution(self, cursor_row, cursor_col)
-    error("calculateExecution was not implemented for action " ..self.name)
+    error('calculateExecution was not implemented for action ' .. self.name)
 end
 
 --#region Action implementations go here
 
-Raise = class(function(action)
-    Action.init(action)
-    action.name = "Raise"
-    action.estimatedCost = 0
-    action.executionPath = { raise, wait }
-end, Action)
+Raise =
+    class(
+    function(action)
+        Action.init(action)
+        action.name = 'Raise'
+        action.estimatedCost = 0
+        action.executionPath = {raise, wait}
+    end,
+    Action
+)
 
-Match3 = class(function(action, panels)
-    Action.init(action, panels)
-    action.color = panels[1].color
-end, Action)
+Match3 =
+    class(
+    function(action, panels)
+        Action.init(action, panels)
+        action.color = panels[1].color
+    end,
+    Action
+)
 
 function Match3.calculateExecution(self, cursor_row, cursor_col)
-    cpuLog("calculating execution path for action " .. self.name)
+    cpuLog('calculating execution path for action ' .. self.name)
     self:print()
 
     self.executionPath = {}
 
     local panelsToMove = self:getPanelsToMove()
-    cpuLog("found " ..#panelsToMove .. " panels to move")
+    cpuLog('found ' .. #panelsToMove .. ' panels to move')
     -- cursor_col is the column of the left part of the cursor
     local cursorVec = GridVector(cursor_row, cursor_col)
-    cpuLog("cursor vec is " ..cursorVec:toString())
-    while (#panelsToMove > 0)
-    do
+    cpuLog('cursor vec is ' .. cursorVec:toString())
+    while (#panelsToMove > 0) do
         panelsToMove = self:sortByDistanceToCursor(panelsToMove, cursorVec)
         local nextPanel = panelsToMove[1]:copy()
-        cpuLog("nextPanel cursorstartpos is " ..nextPanel.cursorStartPos:toString())
+        cpuLog('nextPanel cursorstartpos is ' .. nextPanel.cursorStartPos:toString())
         local moveToPanelVec = cursorVec:difference(nextPanel.cursorStartPos)
-        cpuLog("difference vec is " ..moveToPanelVec:toString())
+        cpuLog('difference vec is ' .. moveToPanelVec:toString())
         self:addCursorMovementToExecution(moveToPanelVec)
         local movePanelVec = GridVector(0, nextPanel.targetVector.column - nextPanel.vector.column)
-        cpuLog("panel movement vec is " ..movePanelVec:toString())
+        cpuLog('panel movement vec is ' .. movePanelVec:toString())
         self:addPanelMovementToExecution(movePanelVec)
         -- update the cursor position for the next round
-        cursorVec = cursorVec:substract(moveToPanelVec):add(GridVector(0, movePanelVec.column - math.sign(movePanelVec.column)))
-        cpuLog("next cursor vec is " ..cursorVec:toString())
+        cursorVec =
+            cursorVec:substract(moveToPanelVec):add(GridVector(0, movePanelVec.column - math.sign(movePanelVec.column)))
+        cpuLog('next cursor vec is ' .. cursorVec:toString())
         --remove the panel we just moved so we don't try moving it again
         table.remove(panelsToMove, 1)
-        cpuLog(#panelsToMove .. " panels left to move")
+        cpuLog(#panelsToMove .. ' panels left to move')
     end
 
     -- wait at the end of each action to avoid scanning the board again while the last swap is still in progress
     -- or don't cause we have waitFrames now
     --table.insert(self.executionPath, wait)
-    cpuLog("exiting calculateExecution")
+    cpuLog('exiting calculateExecution')
 end
 
-H3Match = class(function(action, panels)
-    Match3.init(action, panels)
-    action.name = "Horizontal 3 Match"
-    action.targetRow = 0
-end, Match3)
+H3Match =
+    class(
+    function(action, panels)
+        Match3.init(action, panels)
+        action.name = 'Horizontal 3 Match'
+        action.targetRow = 0
+    end,
+    Match3
+)
 
 function H3Match.calculateCost(self)
     -- always pick the panel in the middle as the one that doesn't need to get moved
@@ -669,7 +740,7 @@ function H3Match.calculateCost(self)
     self.panels[3].targetVector = GridVector(self.panels[3].vector.row, middlePanelColumn + 1)
 
     self.estimatedCost = 0
-    for i=1,#self.panels do
+    for i = 1, #self.panels do
         local distance = math.abs(self.panels[i].targetVector.column - self.panels[i].vector.column)
         if distance > 0 then
             self.estimatedCost = self.estimatedCost + 2
@@ -678,11 +749,15 @@ function H3Match.calculateCost(self)
     end
 end
 
-V3Match = class(function(action, panels)
-    Match3.init(action, panels)
-    action.name = "Vertical 3 Match"
-    action.targetColumn = 0
-end, Match3)
+V3Match =
+    class(
+    function(action, panels)
+        Match3.init(action, panels)
+        action.name = 'Vertical 3 Match'
+        action.targetColumn = 0
+    end,
+    Match3
+)
 
 function V3Match.calculateCost(self)
     self:chooseColumn()
@@ -691,9 +766,9 @@ end
 function V3Match.chooseColumn(self)
     local column
     local minCost = 1000
-    for i=1,6 do
+    for i = 1, 6 do
         local colCost = 0
-        for j=1,#self.panels do
+        for j = 1, #self.panels do
             --how many columns the panel is away from the column we're testing for
             local distance = math.abs(self.panels[j].column - i)
             if distance > 0 then
@@ -711,83 +786,103 @@ function V3Match.chooseColumn(self)
 
     self.estimatedCost = minCost
     self.targetColumn = column
-    cpuLog("chose targetColumn " ..self.targetColumn)
-    cpuLog("setting target vectors for V3Match " ..self.targetColumn)
-    for i=1,#self.panels do
+    cpuLog('chose targetColumn ' .. self.targetColumn)
+    cpuLog('setting target vectors for V3Match ' .. self.targetColumn)
+    for i = 1, #self.panels do
         self.panels[i].targetVector = GridVector(self.panels[i].row, self.targetColumn)
         self.panels[i]:print()
     end
 end
 
-V4Combo = class(function(action, panels)
-    action.name = "Vertical 4 Combo"
-    action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+V4Combo =
+    class(
+    function(action, panels)
+        action.name = 'Vertical 4 Combo'
+        action.color = panels[1].color
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+    end
+)
 
-V5Combo = class(function(action, panels)
-    action.name = "Vertical 5 Combo"
-    action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+V5Combo =
+    class(
+    function(action, panels)
+        action.name = 'Vertical 5 Combo'
+        action.color = panels[1].color
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+    end
+)
 
-T5Combo = class(function(action, panels)
-    action.name = "T-shaped 5 Combo"
-    action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+T5Combo =
+    class(
+    function(action, panels)
+        action.name = 'T-shaped 5 Combo'
+        action.color = panels[1].color
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+    end
+)
 
-L5Combo = class(function(action, panels)
-    action.name = "L-shaped 5 Combo"
-    action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+L5Combo =
+    class(
+    function(action, panels)
+        action.name = 'L-shaped 5 Combo'
+        action.color = panels[1].color
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+    end
+)
 
-T6Combo = class(function(action, panels)
-    action.name = "T-shaped 6 Combo"
-    action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+T6Combo =
+    class(
+    function(action, panels)
+        action.name = 'T-shaped 6 Combo'
+        action.color = panels[1].color
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+    end
+)
 
-T7Combo = class(function(action, panels)
-    action.name = "T-shaped 7 Combo"
-    action.color = panels[1].color
-    action.panels = panels
-    action.garbageValue = 0
-    action.stackFreezeValue = 0
-    action.estimatedCost = 0
-    action.executionPath = nil
-end)
+T7Combo =
+    class(
+    function(action, panels)
+        action.name = 'T-shaped 7 Combo'
+        action.color = panels[1].color
+        action.panels = panels
+        action.garbageValue = 0
+        action.stackFreezeValue = 0
+        action.estimatedCost = 0
+        action.executionPath = nil
+    end
+)
 
 --#endregion
 
-
 --#region Helper classes and functions go here
 
-GridVector = class(function(vector, row, column)
-    vector.row = row
-    vector.column = column
-end)
+GridVector =
+    class(
+    function(vector, row, column)
+        vector.row = row
+        vector.column = column
+    end
+)
 
 function GridVector.distance(self, otherVec)
     --since this is a grid where diagonal movement is not possible it's just the sum of both directions instead of a diagonal
@@ -811,7 +906,7 @@ function GridVector.equals(self, otherVec)
 end
 
 function GridVector.toString(self)
-    return self.row .. "|" .. self.column
+    return self.row .. '|' .. self.column
 end
 
 function math.sign(x)
@@ -820,14 +915,14 @@ end
 
 -- a glorified print that can be turned on/off via the cpu configuration
 function cpuLog(...)
-    if not active_cpuConfig or active_cpuConfig["Log"] then
+    if not active_cpuConfig or active_cpuConfig['Log'] then
         print(...)
     end
 end
 
 function print_config(someConfig)
-    print("print config")
-    for key, value in pairs (someConfig) do
+    print('print config')
+    for key, value in pairs(someConfig) do
         print('\t', key, value)
     end
 end
@@ -844,6 +939,9 @@ function Stack.getFragmentationPercentage(self)
     local connectedPanels = self:getMaxConnectedTier1Panels()
     local totalPanels = self:getTotalTier1Panels()
 
+    print('total panel count is ' .. totalPanels)
+    print('connected panel count is ' .. connectedPanels)
+
     return 1 - (connectedPanels / totalPanels)
 end
 
@@ -853,12 +951,14 @@ function Stack.getTotalTier1Panels(self)
 
     local bottomGarbageRowIndex = self:getBottomGarbageRowIndex()
 
-    for i=1,bottomGarbageRowIndex do
-        for j=1,#self.panels[i] do
+    for i = 1, bottomGarbageRowIndex do
+        for j = 1, #self.panels[i] do
             local panel = self.panels[i][j]
             if panel.color > 0 and panel.color < 9 then
-                if panel.state = "normal" or panel.state = "hovering" 
-                or panel.state = "falling" or panel.state = "landing" then
+                if
+                    panel.state == 'normal' or panel.state == 'hovering' or panel.state == 'falling' or
+                        panel.state == 'landing'
+                 then
                     panelCount = panelCount + 1
                 end
             end
@@ -877,44 +977,55 @@ function Stack.getMaxConnectedTier1Panels(self)
     local bottomGarbageRowIndex = self:getBottomGarbageRowIndex()
 
     local columns = {}
-    -- first transforming into a column representation 
+    -- first transforming into a column representation
     if self.panels and self.panels[1] then
-        for i=1,#self.panels[1] do
+        for i = 1, #self.panels[1] do
             columns[i] = {}
-            for j=1,bottomGarbageRowIndex do
+            for j = 1, bottomGarbageRowIndex do
+                local panel = self.panels[j][i]
                 if panel.color > 0 and panel.color < 9 then
-                    if panel.state = "normal" or panel.state = "hovering" or
-                       panel.state = "falling" or panel.state = "landing" then
-                        columns[i][j] = self.panels[j][i]
+                    if
+                        panel.state == 'normal' or panel.state == 'hovering' or panel.state == 'falling' or
+                            panel.state == 'landing'
+                     then
+                        columns[i][j] = self.panels[j][i].color
                     end
                 end
             end
         end
     end
 
-    for i=1,#columns - 1 do
-        local baseHeight = #columns[i] 
+    for i = 1, #columns - 1 do
+        local baseHeight = #columns[i]
+        cpuLog('column ' .. i .. ' with a height of ' .. baseHeight)
 
-        if baseHeight > 1 then
-            for j=i+1,#columns do
-                if not #columns[j] > 1 and #columns[j] > baseHeight - 2 then
-                    --not sufficing the criteria of N >= 2
-                    if j - 1 = i then
-                        break
-                    else
-                        local connectedPanelCount = 0
-                        for k=i,j do
-                            connectedPanelCount = connectedPanelCount + #columns[k]
-                        end
-                        -- not sufficing the criteria of M >= 3 (only one column needs to be 3 high)
-                        if connectedPanelCount / (j - i) = 2 then
-                            break
-                        else
-                            if connectedPanelCount > maximumConnectedPanelCount then
-                                maximumConnectedPanelCount = connectedPanelCount
-                            end
-                        end
-                    end
+        --match with height = baseHeight - 1 and heigh = baseHeight
+        for height = baseHeight - 1, baseHeight do
+            local connectedPanelCount = baseHeight
+            local cols = 1 --already accounting for column i
+            for k = i - 1, 1, -1 do
+                -- from column i to the left side of the board
+                if columns[k] and #columns[k] >= height then
+                    connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
+                    cols = cols + 1
+                else
+                    break
+                end
+            end
+
+            for k = i + 1, #columns do
+                if columns[k] and #columns[k] >= height then
+                    connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
+                    cols = cols + 1
+                else
+                    break
+                end
+            end
+
+            if cols >= 2 and (connectedPanelCount / cols) > 2 then
+                --suffices the 2x3 criteria
+                if connectedPanelCount > maximumConnectedPanelCount then
+                    maximumConnectedPanelCount = connectedPanelCount
                 end
             end
         end
@@ -926,10 +1037,12 @@ end
 function Stack.getBottomGarbageRowIndex(self)
     local bottomGarbageRowIndex = 13
 
-    for i=1,#self.panels do 
+    for i = 1, #self.panels do
         -- assuming 6 columns here, not working with wider stacks
-        if (self.panels[i][1].color = 9 or self.panels[i][1].color = 0) and
-           (self.panels[i][6].color = 9 or self.panels[i][6].color = 0) then
+        if
+            (self.panels[i][1].color == 9 or self.panels[i][1].color == 0) and
+                (self.panels[i][6].color == 9 or self.panels[i][6].color == 0)
+         then
             bottomGarbageRowIndex = i
             break
         end
@@ -937,27 +1050,5 @@ function Stack.getBottomGarbageRowIndex(self)
 
     return bottomGarbageRowIndex
 end
-
-
-
---@-- returns a 2 dimensional array where i is rownumber (bottom to top), index of j is panel color and value is the amount of panels of that color in the row
--- function CPU1.panelsToRowGrid(self)
---     local panels = self.stack.panels
---     self:printAsAprilStack()
---     local grid = {}
---     for i=1,#panels do
---         grid[i] = {}
---         -- always use 8: shockpanels appear on every level and we want columnnumber=color number for readability
---         for j=1,8 do
---             local count = 0
---             for k = 1,#panels[1] do
---                 if panels[i][k].color == j then
---                     count = count + 1
---                 end
---             end
---             grid[i][j] = count
---         end
---     end
-   
 
 --#endregion
