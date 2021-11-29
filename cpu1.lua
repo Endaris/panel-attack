@@ -203,16 +203,16 @@ end
 
 function CPU1.chooseStrategy(self)
     if self.stack.danger_music then
-        return Defend()
+        return Defend(self)
     end
 
     local fragmentationPercentage = self.stack:getFragmentationPercentage()
     cpuLog('Fragmentation % is ' .. fragmentationPercentage)
     if fragmentationPercentage > self.config.DefragmentationPercentageThreshold then
-        return Defragment()
+        return Defragment(self)
     end
 
-    return Attack()
+    return Attack(self)
 end
 
 function CPU1.findActions(self)
@@ -318,18 +318,7 @@ function CPU1.chooseAction(self)
         self.currentAction:calculateExecution()
         self.inputQueue = self.currentAction.executionPath
     else
-        for i = 1, #self.actions do
-            cpuLog(
-                'Action at index' ..
-                    i .. ': ' .. self.actions[i].name .. ' with cost of ' .. self.actions[i].estimatedCost
-            )
-        end
-
-        if #self.actions > 0 then
-            self.currentAction = self:getCheapestAction()
-        else
-            self.currentAction = Raise()
-        end
+        self.strategy:chooseAction()
     end
 
     if self.currentAction then
@@ -338,46 +327,6 @@ function CPU1.chooseAction(self)
         self.inputQueue = self.currentAction.executionPath
     else
         cpuLog('chosen action is nil')
-    end
-end
-
-function CPU1.getCheapestAction(self)
-    local actions = {}
-
-    if #self.actions > 0 then
-        table.sort(
-            self.actions,
-            function(a, b)
-                return a.estimatedCost < b.estimatedCost
-            end
-        )
-
-        for i = #self.actions, 1, -1 do
-            self.actions[i]:print()
-            -- this is a crutch cause sometimes we can find actions that are already completed and then we choose them cause they're already...complete
-            if self.actions[i].estimatedCost == 0 then
-                cpuLog('actions is already completed, removing...')
-                table.remove(self.actions, i)
-            end
-        end
-
-        local i = 1
-        while i <= #self.actions and self.actions[i].estimatedCost == self.actions[1].estimatedCost do
-            self.actions[i]:calculateExecution(self.stack.cur_row, self.stack.cur_col + 0.5)
-            table.insert(actions, self.actions[i])
-            i = i + 1
-        end
-
-        table.sort(
-            actions,
-            function(a, b)
-                return #a.executionPath < #b.executionPath
-            end
-        )
-
-        return actions[1]
-    else
-        return Raise()
     end
 end
 
@@ -401,31 +350,6 @@ function CPU1.panelsToRowGrid(self)
     end
     return grid
 end
-
--- exists to avoid the case where the cpu finds an action with panels that are falling down and thus no longer in the expected location when the cursor arrives
--- may still be faulty if the panels coincidently fall into a chain
--- should be dropped once the CPU is capable of properly tracking the panels for its current action.
--- function simulatePostFallingState(panels)
---     cpuLog("simulating post falling state")
---     -- go down from top to bottom and reinsert any 0s after finding a non 0 at the top
---     cpuLog("columns = " .. #panels[1])
---     cpuLog("rows = " .. #panels)
---     for i=1,#panels[1] do
---         local panelFound = false
---         for j=#panels,1,-1 do
---             cpuLog("panel at coordinate " .. j .. "|" .. i .. " has color " .. panels[j][i].color)
---             if panels[j][i].color == 0 then
---                 if panelFound then
---                     table.remove(panels[j], i)
---                     table.insert(panels[j], 0)
---                 end
---             else
---                 panelFound = true
---             end
---         end
---     end
---     return panels
--- end
 
 function CPU1.printAsAprilStack(self)
     if self.stack then
@@ -452,37 +376,97 @@ function CPU1.printAsAprilStack(self)
 end
 
 
-Strategy = class(function(strategy, name)
+Strategy = class(function(strategy, name, cpu)
     strategy.name = name
+    strategy.cpu = cpu
 end)
 
-function Strategy.fillActionQueue(self)
-    error("Method fillActionQueue of strategy " .. self.name .. " has not been implemented.")
+function Strategy.chooseAction(self)
+    error("Method chooseAction of strategy " .. self.name .. " has not been implemented.")
 end
 
 Defend = class(
-        function(strategy, name)
-            Strategy.init(strategy, name)
+        function(strategy, cpu)
+            Strategy.init(strategy, "Defend", cpu)
         end,
         Strategy
 )
+
+function Defend.chooseAction(self)
+
+end
 
 Defragment = class(
-        function(strategy, name)
-            Strategy.init(strategy, name)
+        function(strategy, cpu)
+            Strategy.init(strategy, "Defragment", cpu)
         end,
         Strategy
 )
+
+function Defragment.chooseAction(self)
+
+end
 
 Attack = class(
-        function(strategy, name)
-            Strategy.init(strategy, name)
+        function(strategy, cpu)
+            Strategy.init(strategy, "Attack", cpu)
         end,
         Strategy
 )
 
-function Attack.fillActionQueue(self)
+function Attack.chooseAction(self)
+    for i = 1, #self.cpu.actions do
+        cpuLog(
+            'Action at index' ..
+                i .. ': ' .. self.cpu.actions[i].name .. ' with cost of ' .. self.cpu.actions[i].estimatedCost
+        )
+    end
 
+    if #self.cpu.actions > 0 then
+        self.cpu.currentAction = self:getCheapestAction()
+    else
+        self.cpu.currentAction = Raise()
+    end
+end
+
+function Attack.getCheapestAction(self)
+    local actions = {}
+
+    if #self.cpu.actions > 0 then
+        table.sort(
+            self.cpu.actions,
+            function(a, b)
+                return a.estimatedCost < b.estimatedCost
+            end
+        )
+
+        for i = #self.cpu.actions, 1, -1 do
+            self.cpu.actions[i]:print()
+            -- this is a crutch cause sometimes we can find actions that are already completed and then we choose them cause they're already...complete
+            if self.cpu.actions[i].estimatedCost == 0 then
+                cpuLog('actions is already completed, removing...')
+                table.remove(self.cpu.actions, i)
+            end
+        end
+
+        local i = 1
+        while i <= #self.cpu.actions and self.cpu.actions[i].estimatedCost == self.cpu.actions[1].estimatedCost do
+            self.cpu.actions[i]:calculateExecution(self.cpu.stack.cur_row, self.cpu.stack.cur_col + 0.5)
+            table.insert(actions, self.cpu.actions[i])
+            i = i + 1
+        end
+
+        table.sort(
+            actions,
+            function(a, b)
+                return #a.executionPath < #b.executionPath
+            end
+        )
+
+        return actions[1]
+    else
+        return Raise()
+    end
 end
 
 
@@ -676,6 +660,17 @@ Raise =
     end,
     Action
 )
+
+Move =
+    class(
+        function(action, panelId, targetCoord)
+            Action.init(action)
+            action.name = 'Move'
+            action.panelId = panelId
+            action.targetCoord = targetCoord
+        end,
+        Action
+    )
 
 Match3 =
     class(
@@ -936,8 +931,8 @@ end
 -- a panel counts as connected if you can move it along that block without it dropping rows
 -- 1 - N_connectedpanels / N_totalpanels
 function Stack.getFragmentationPercentage(self)
-    local connectedPanels = self:getMaxConnectedTier1Panels()
-    local totalPanels = self:getTotalTier1Panels()
+    local connectedPanels = self:getMaxConnectedTier1PanelsCount()
+    local totalPanels = self:getTotalTier1PanelsCount()
 
     print('total panel count is ' .. totalPanels)
     print('connected panel count is ' .. connectedPanels)
@@ -946,14 +941,14 @@ function Stack.getFragmentationPercentage(self)
 end
 
 --gets all panels in the stack that are in the first tier of the stack
-function Stack.getTotalTier1Panels(self)
+function Stack.getTotalTier1PanelsCount(self)
     local panelCount = 0
 
-    local bottomGarbageRowIndex = self:getBottomGarbageRowIndex()
+    local columns = self:getTier1PanelsAsColumns()
 
-    for i = 1, bottomGarbageRowIndex do
-        for j = 1, #self.panels[i] do
-            local panel = self.panels[i][j]
+    for i = 1, #columns do
+        for j = 1, #columns[i] do
+            local panel = columns[i][j]
             if panel.color > 0 and panel.color < 9 then
                 if
                     panel.state == 'normal' or panel.state == 'hovering' or panel.state == 'falling' or
@@ -968,32 +963,65 @@ function Stack.getTotalTier1Panels(self)
     return panelCount
 end
 
--- returns the maximum number of panels connected in a MxN rectangle shape in the first tier of the stack
--- where M >= 2 and N >= 3 divided through the total number of panels on the board
--- a panel counts as connected if you can move it along that block without it dropping rows
-function Stack.getMaxConnectedTier1Panels(self)
-    local maximumConnectedPanelCount = 0
-
-    local bottomGarbageRowIndex = self:getBottomGarbageRowIndex()
-
+-- returns the stack in 6 columns that hold the panels from bottom up
+function Stack.getPanelsAsColumns(self)
     local columns = {}
     -- first transforming into a column representation
     if self.panels and self.panels[1] then
         for i = 1, #self.panels[1] do
             columns[i] = {}
-            for j = 1, bottomGarbageRowIndex do
+            for j = 1, #self.panels do
                 local panel = self.panels[j][i]
                 if panel.color > 0 and panel.color < 9 then
-                    if
-                        panel.state == 'normal' or panel.state == 'hovering' or panel.state == 'falling' or
-                            panel.state == 'landing'
-                     then
-                        columns[i][j] = self.panels[j][i].color
-                    end
+                    columns[i][j] = self.panels[j][i]
                 end
             end
         end
     end
+    return columns
+end
+
+-- returns the stack in 6 columns that hold the panels from bottom up until reaching the first garbage panel
+-- for that reason at times it may not actually be the entire first tier if a low combo garbage blocks early and has panels on top
+function Stack.getTier1PanelsAsColumns(self)
+    -- first transforming into a column representation
+    local columns = self:getPanelsAsColumns()
+
+    -- cut out everything 0 and everything that is behind a 9
+    for i =1, #columns do
+        for j = #columns[i], 1,-1 do
+            if columns[i][j].color == 0 then
+                table.remove(columns[i], j)
+            end
+            if columns[i][j].color == 9 then
+                for k = #columns[i],j,-1 do
+                    table.remove(columns[i], k)
+                end
+            end
+        end
+    end
+
+    return columns
+end
+
+-- returns the maximum number of panels connected in a MxN rectangle shape in the first tier of the stack
+-- where M >= 2 and N >= 3 divided through the total number of panels on the board
+-- a panel counts as connected if you can move it along that block without it dropping rows
+function Stack.getMaxConnectedTier1PanelsCount(self)
+    local maximumConnectedPanelCount = 0
+
+    local panelSections = self:getTier1ConnectedPanelSections()
+
+    for i=1,#panelSections do
+        maximumConnectedPanelCount = math.max(maximumConnectedPanelCount, panelSections[i].numberOfPanels)
+    end
+
+    return maximumConnectedPanelCount
+end
+
+function Stack.getTier1ConnectedPanelSections(self)
+    local columns = self:getTier1PanelsAsColumns()
+    local connectedPanelSections = {}
 
     for i = 1, #columns - 1 do
         local baseHeight = #columns[i]
@@ -1002,12 +1030,13 @@ function Stack.getMaxConnectedTier1Panels(self)
         --match with height = baseHeight - 1 and heigh = baseHeight
         for height = baseHeight - 1, baseHeight do
             local connectedPanelCount = baseHeight
-            local cols = 1 --already accounting for column i
+            local colsToTheLeft = 0
+            local colsToTheRight = 0
             for k = i - 1, 1, -1 do
                 -- from column i to the left side of the board
                 if columns[k] and #columns[k] >= height then
                     connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
-                    cols = cols + 1
+                    colsToTheLeft = colsToTheLeft + 1
                 else
                     break
                 end
@@ -1016,39 +1045,44 @@ function Stack.getMaxConnectedTier1Panels(self)
             for k = i + 1, #columns do
                 if columns[k] and #columns[k] >= height then
                     connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
-                    cols = cols + 1
+                    colsToTheRight = colsToTheRight + 1
                 else
                     break
                 end
             end
 
+            local cols = 1 + colsToTheLeft + colsToTheRight
+
             if cols >= 2 and (connectedPanelCount / cols) > 2 then
                 --suffices the 2x3 criteria
-                if connectedPanelCount > maximumConnectedPanelCount then
-                    maximumConnectedPanelCount = connectedPanelCount
-                end
+
+                local startCol = i - colsToTheLeft
+                local endCol = i + colsToTheRight
+
+                --probably still necessary to check for duplicates before inserting
+                table.insert(connectedPanelSections,
+                    ConnectedPanelSection(GridVector(1,startCol),
+                                        GridVector(height, endCol),
+                                        connectedPanelCount, self.panels
+                                        ))
             end
         end
     end
 
-    return maximumConnectedPanelCount
+    return connectedPanelSections
 end
 
-function Stack.getBottomGarbageRowIndex(self)
-    local bottomGarbageRowIndex = 13
+ConnectedPanelSection = class(function(panelSection, bottomLeftCoord, topRightCoord, numberOfPanels, panels)
+    panelSection.bottomLeftCoord = bottomLeftCoord
+    panelSection.topRightCoord = topRightCoord
+    panelSection.numberOfPanels = numberOfPanels
+    panelSection.panels = {}
 
-    for i = 1, #self.panels do
-        -- assuming 6 columns here, not working with wider stacks
-        if
-            (self.panels[i][1].color == 9 or self.panels[i][1].color == 0) and
-                (self.panels[i][6].color == 9 or self.panels[i][6].color == 0)
-         then
-            bottomGarbageRowIndex = i
-            break
+    for i=bottomLeftCoord.row,topRightCoord.row do
+        for j=bottomLeftCoord.column,topRightCoord.column do
+            table.insert(panelSection.panels, panels[j][i])
         end
     end
-
-    return bottomGarbageRowIndex
-end
+end)
 
 --#endregion
