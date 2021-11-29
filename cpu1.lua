@@ -202,6 +202,12 @@ function CPU1.finalizeCurrentAction(self)
 end
 
 function CPU1.chooseStrategy(self)
+    if not self.stack or not self.stack.panels then
+        return Attack(self)
+    else
+        self:printAsAprilStack()
+    end
+
     if self.stack.danger_music then
         return Defend(self)
     end
@@ -404,7 +410,87 @@ Defragment = class(
 )
 
 function Defragment.chooseAction(self)
+    local columns = self.stack:getTier1PanelsAsColumns()
+    local connectedPanelSections = self.stack:getTier1ConnectedPanelSections()
+    local panels = {}
+    local emptySpaces = {}
 
+    for i=1,#columns do
+        for j=1,#columns[i] do
+            table.insert(panels, {columns[i][j], 0})
+        end
+    end
+
+    --setting up a table for the empty spaces
+    local maxColHeight = 0
+    for i=1,#columns do
+        maxColHeight = math.max(maxColHeight, #columns[i])
+    end
+
+    for i=1,maxColHeight + 1 do
+        for j=1,#columns do
+            if self.stack.panels[i][j].color == 0 then
+                local emptySpace = ActionPanel(0, i, j)
+                table.insert(emptySpaces, {emptySpace, 0})
+            end
+        end
+    end
+
+    for i=1,#connectedPanelSections do
+        -- setting scores for panels
+        for j=1,#panels do
+            if panels[j][1].vector:inRectangle(connectedPanelSections[i].bottomLeftVector, connectedPanelSections[i].topRightVector) then
+                panels[j][2] = panels[j][2] + connectedPanelSections[i].numberOfPanels
+            end
+        end
+        -- setting scores for adjacent empty space
+        for j=1,#emptySpaces do
+            if emptySpaces[j][1].vector:adjacentToRectangle(connectedPanelSections[i].bottomLeftVector, connectedPanelSections[i].topRightVector) then
+                emptySpaces[j][2] = emptySpaces[j][2] + 1
+            end
+        end
+    end
+
+    table.sort(panels, function(a, b)
+        return a[2]<b[2]
+    end)
+
+    table.sort(emptySpaces, function(a, b)
+        return a[2]<b[2]
+    end)
+
+    local panelsToMove = { panels[1] }
+    for i=2,#panels do
+        if panels[i][2] == panels[1][2] then
+            table.insert(panelsToMove, panels[i])
+        else
+            break
+        end
+    end
+
+    local emptySpacesToFill = { emptySpaces[1] }
+    for i=2,#emptySpaces do
+        if emptySpaces[i][2] == emptySpaces[1][2] then
+            table.insert(emptySpacesToFill, emptySpaces[i])
+        else
+            break
+        end
+    end
+
+    table.sort(emptySpacesToFill, function(a, b)
+        return a[1].vector.distance(GridVector(self.cpu.stack.cursor_row, self.cpu.stack.cursor_col))
+                < b[1].vector.distance(GridVector(self.cpu.stack.cursor_row, self.cpu.stack.cursor_col))
+    end)
+
+    for i=1,#emptySpacesToFill do
+        table.sort(panelsToMove, function(a, b)
+            return math.abs(a[1].column - emptySpacesToFill[i][1].column) <
+                                math.abs(b[1].column - emptySpacesToFill[i][1].column)
+        end)
+
+        local panel = table.remove(table, 1)
+        table.insert(self.cpu.actionQueue, Move(self.cpu.stack, panel, emptySpacesToFill[i][1].vector))
+    end
 end
 
 Attack = class(
@@ -469,10 +555,10 @@ function Attack.getCheapestAction(self)
     end
 end
 
-
 ActionPanel =
     class(
-    function(actionPanel, color, row, column)
+    function(actionPanel, id, color, row, column)
+        actionPanel.id = id
         actionPanel.color = color
         actionPanel.row = row
         actionPanel.column = column
@@ -485,7 +571,11 @@ ActionPanel =
 )
 
 function ActionPanel.print(self)
-    local message = 'panel with color ' .. self.color .. ' at coordinate ' .. self.vector:toString()
+    local message = 'panel with color ' .. self.color 
+    if self.vector then
+        message = message .. ' at coordinate ' .. self.vector:toString()
+    end
+    
     if self.targetVector then
         message = message .. ' with targetVector ' .. self.targetVector:toString()
     end
@@ -557,11 +647,7 @@ function Action.sortByDistanceToCursor(self, panels, cursorVec)
     --setting the correct cursor position for starting to work on each panel here
     for i = 1, #panels do
         local panel = panels[i]
-        if panel.vector.column > panel.targetVector.column then
-            panel.cursorStartPos = GridVector(panel.row, panel.column - 0.5)
-        else
-            panel.cursorStartPos = GridVector(panel.row, panel.column + 0.5)
-        end
+        self:setCursorStartPos(panel)
     end
 
     table.sort(
@@ -572,6 +658,14 @@ function Action.sortByDistanceToCursor(self, panels, cursorVec)
     )
 
     return panels
+end
+
+function Action.setCursorStartPos(panel)
+    if panel.vector.column > panel.targetVector.column then
+        panel.cursorStartPos = GridVector(panel.row, panel.column - 0.5)
+    else
+        panel.cursorStartPos = GridVector(panel.row, panel.column + 0.5)
+    end
 end
 
 function Action.addCursorMovementToExecution(self, gridVector)
@@ -663,14 +757,50 @@ Raise =
 
 Move =
     class(
-        function(action, panelId, targetCoord)
+        function(action, stack, panel, targetVector)
             Action.init(action)
             action.name = 'Move'
-            action.panelId = panelId
-            action.targetCoord = targetCoord
+            action.stack = stack
+            action.panel = panel
+            action.targetVector = targetVector
+            panel.targetVector = targetVector
+            self:setCursorStartPos(action.panel)
         end,
         Action
     )
+
+    function Move.calculateExecution(self, cursor_row, cursor_col)
+        local generalDirection = self.panel.targetVector.column - self.panel.vector.column
+        local cursorVec = GridVector(cursor_row, cursor_col)
+
+        local projectedPos = self.panel.vector
+        local movementVec
+
+        if generalDirection > 0 then
+            movementVec = GridVector(1, 0)
+        else
+            movementVec = GridVector(-1, 0)
+        end
+
+        while not projectedPos.equals(self.panel.targetVector) do
+            local moveToPanelVec = cursorVec:difference(self.panel.cursorStartPos)
+            self:addCursorMovementToExecution(moveToPanelVec)
+            self:addPanelMovementToExecution(movementVec)
+
+            -- find out where the panel ended up now
+            -- the result of the swap
+            projectedPos = projectedPos.substract(movementVec)
+
+            -- panel is falling down
+            for r=projectedPos.row - 1,1 do
+                if self.stack.panels[r][projectedPos.column].color == 0 then
+                    projectedPos = projectedPos.substract(GridVector(0, -1))
+                else
+                    break
+                end
+            end
+        end
+    end
 
 Match3 =
     class(
@@ -728,6 +858,9 @@ H3Match =
 )
 
 function H3Match.calculateCost(self)
+    cpuLog("calculating cost for action")
+    self:print()
+
     -- always pick the panel in the middle as the one that doesn't need to get moved
     local middlePanelColumn = self.panels[2].vector.column
     self.panels[1].targetVector = GridVector(self.panels[1].vector.row, middlePanelColumn - 1)
@@ -755,6 +888,8 @@ V3Match =
 )
 
 function V3Match.calculateCost(self)
+    cpuLog("calculating cost for action")
+    self:print()
     self:chooseColumn()
 end
 
@@ -904,6 +1039,24 @@ function GridVector.toString(self)
     return self.row .. '|' .. self.column
 end
 
+function GridVector.inRectangle(self, bottomLeft, topRight)
+    return self.row >= bottomLeft.row and self.column >= bottomLeft.column and self.row <= topRight.row 
+            and self.column <= topRight.column
+end
+
+--special meaning of adjacent:
+--  -----------
+-- x|x x x x x|x
+-- x|x       x|x
+-- x|x       x|x
+--  -----------
+-- both inside and outside but not on top
+-- technically catches things inside the box too but is not realistic for the usecase
+-- maybe a better name would be "safe from rain" as it characterises better which spots are meant
+function GridVector.adjacentToRectangle(self, bottomLeft, topRight)
+    return self.row <= topRight.row and (self.column - 1 <= topRight.column or self.column + 1 >= bottomLeft.column)
+end
+
 function math.sign(x)
     return x > 0 and 1 or x < 0 and -1 or 0
 end
@@ -973,7 +1126,7 @@ function Stack.getPanelsAsColumns(self)
             for j = 1, #self.panels do
                 local panel = self.panels[j][i]
                 if panel.color > 0 and panel.color < 9 then
-                    columns[i][j] = self.panels[j][i]
+                    columns[i][j] = ActionPanel(self.panels[j][i].color, i, j)
                 end
             end
         end
@@ -1005,7 +1158,7 @@ function Stack.getTier1PanelsAsColumns(self)
 end
 
 -- returns the maximum number of panels connected in a MxN rectangle shape in the first tier of the stack
--- where M >= 2 and N >= 3 divided through the total number of panels on the board
+-- where M >= 2 and N >= 3
 -- a panel counts as connected if you can move it along that block without it dropping rows
 function Stack.getMaxConnectedTier1PanelsCount(self)
     local maximumConnectedPanelCount = 0
@@ -1019,6 +1172,9 @@ function Stack.getMaxConnectedTier1PanelsCount(self)
     return maximumConnectedPanelCount
 end
 
+-- returns all sections of connected panels that are at least 2x3 in size
+-- a panel counts as connected if you can move it along that section without it dropping rows
+-- includes sections that are fully part of other sections, no duplicates
 function Stack.getTier1ConnectedPanelSections(self)
     local columns = self:getTier1PanelsAsColumns()
     local connectedPanelSections = {}
@@ -1029,57 +1185,70 @@ function Stack.getTier1ConnectedPanelSections(self)
 
         --match with height = baseHeight - 1 and heigh = baseHeight
         for height = baseHeight - 1, baseHeight do
-            local connectedPanelCount = baseHeight
-            local colsToTheLeft = 0
-            local colsToTheRight = 0
-            for k = i - 1, 1, -1 do
-                -- from column i to the left side of the board
-                if columns[k] and #columns[k] >= height then
-                    connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
-                    colsToTheLeft = colsToTheLeft + 1
-                else
+
+            -- determine if this height+column is already part of a section
+            local repVec = GridVector(height, i)
+            local alreadyExists = false
+            for n=1,#connectedPanelSections do
+                if repVec.inRectangle(connectedPanelSections[n].bottomLeftVector,connectedPanelSections[n].topRightVector) then
+                    alreadyExists = true
                     break
                 end
             end
 
-            for k = i + 1, #columns do
-                if columns[k] and #columns[k] >= height then
-                    connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
-                    colsToTheRight = colsToTheRight + 1
-                else
-                    break
+            if not alreadyExists == true then
+                local connectedPanelCount = baseHeight
+                local colsToTheLeft = 0
+                local colsToTheRight = 0
+                for k = i - 1, 1, -1 do
+                    -- from column i to the left side of the board
+                    if columns[k] and #columns[k] >= height then
+                        connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
+                        colsToTheLeft = colsToTheLeft + 1
+                    else
+                        break
+                    end
                 end
-            end
 
-            local cols = 1 + colsToTheLeft + colsToTheRight
+                -- from column i to the right side of the board
+                for k = i + 1, #columns do
+                    if columns[k] and #columns[k] >= height then
+                        connectedPanelCount = connectedPanelCount + math.min(height + 1, #columns[k])
+                        colsToTheRight = colsToTheRight + 1
+                    else
+                        break
+                    end
+                end
 
-            if cols >= 2 and (connectedPanelCount / cols) > 2 then
-                --suffices the 2x3 criteria
+                local cols = 1 + colsToTheLeft + colsToTheRight
 
-                local startCol = i - colsToTheLeft
-                local endCol = i + colsToTheRight
+                if cols >= 2 and (connectedPanelCount / cols) > 2 then
+                    --suffices the 2x3 criteria
 
-                --probably still necessary to check for duplicates before inserting
-                table.insert(connectedPanelSections,
-                    ConnectedPanelSection(GridVector(1,startCol),
-                                        GridVector(height, endCol),
-                                        connectedPanelCount, self.panels
-                                        ))
-            end
+                    local startCol = i - colsToTheLeft
+                    local endCol = i + colsToTheRight
+                    local bottomLeft = GridVector(1, startCol)
+                    local topRight = GridVector(height, endCol)
+
+                    table.insert(connectedPanelSections,
+                        ConnectedPanelSection(bottomLeft, topRight,
+                                            connectedPanelCount, self.panels))
+                end
+            end      
         end
     end
 
     return connectedPanelSections
 end
 
-ConnectedPanelSection = class(function(panelSection, bottomLeftCoord, topRightCoord, numberOfPanels, panels)
-    panelSection.bottomLeftCoord = bottomLeftCoord
-    panelSection.topRightCoord = topRightCoord
+ConnectedPanelSection = class(function(panelSection, bottomLeftVector, topRightVector, numberOfPanels, panels)
+    panelSection.bottomLeftVector = bottomLeftVector
+    panelSection.topRightVector = topRightVector
     panelSection.numberOfPanels = numberOfPanels
     panelSection.panels = {}
 
-    for i=bottomLeftCoord.row,topRightCoord.row do
-        for j=bottomLeftCoord.column,topRightCoord.column do
+    for i=bottomLeftVector.row,topRightVector.row do
+        for j=bottomLeftVector.column,topRightVector.column do
             table.insert(panelSection.panels, panels[j][i])
         end
     end
