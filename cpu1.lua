@@ -2,8 +2,8 @@ cpu_configs = {
     ['DevConfig'] = {
         ReadingBehaviour = 'WaitAll',
         Log = true,
-        MoveRateLimit = 15,
-        MoveSwapRateLimit = 25,
+        MoveRateLimit = 5,
+        MoveSwapRateLimit = 10,
         DefragmentationPercentageThreshold = 0.3
     },
     ['DummyTestOption'] = {
@@ -209,12 +209,15 @@ function CPU1.chooseStrategy(self)
     end
 
     if self.stack.danger_music then
-        return Defend(self)
+        --return Defend(self) 
+        --for testing
+        return Defragment(self)
     end
 
     local fragmentationPercentage = self.stack:getFragmentationPercentage()
     cpuLog('Fragmentation % is ' .. fragmentationPercentage)
     if fragmentationPercentage > self.config.DefragmentationPercentageThreshold then
+        cpuLog("Chose Defragment as strategy!")
         return Defragment(self)
     end
 
@@ -237,7 +240,7 @@ function CPU1.findActions(self)
                 local panels = {}
                 for k = 1, #self.stack.panels[i] do
                     if self.stack.panels[i][k].color == j then
-                        local actionPanel = ActionPanel(j, i, k)
+                        local actionPanel = ActionPanel(self.stack.panels[i][k].id, j, i, k)
                         table.insert(panels, actionPanel)
                     end
                 end
@@ -268,7 +271,7 @@ function CPU1.findActions(self)
                 colorConsecutivePanels[colorConsecutiveRowCount] = {}
                 for k = 1, #self.stack.panels[i] do
                     if self.stack.panels[i][k].color == j then
-                        local actionPanel = ActionPanel(j, i, k)
+                        local actionPanel = ActionPanel(self.stack.panels[i][k].id, j, i, k)
                         table.insert(colorConsecutivePanels[colorConsecutiveRowCount], actionPanel)
                     end
                 end
@@ -320,8 +323,12 @@ end
 function CPU1.chooseAction(self)
     if #self.actionQueue > 0 then
         local action = table.remove(self.actionQueue, 1)
+        cpuLog("Taking action out of the actionQueue")
+        action:print()
         self.currentAction = action
-        self.currentAction:calculateExecution()
+        if not self.currentAction.executionPath or #self.currentAction.executionPath == 0 then
+            self.currentAction:calculateExecution(self.stack.cur_row, self.stack.cur_col)
+        end
         self.inputQueue = self.currentAction.executionPath
     else
         self.strategy:chooseAction()
@@ -410,8 +417,8 @@ Defragment = class(
 )
 
 function Defragment.chooseAction(self)
-    local columns = self.stack:getTier1PanelsAsColumns()
-    local connectedPanelSections = self.stack:getTier1ConnectedPanelSections()
+    local columns = self.cpu.stack:getTier1PanelsAsColumns()
+    local connectedPanelSections = self.cpu.stack:getTier1ConnectedPanelSections()
     local panels = {}
     local emptySpaces = {}
 
@@ -429,14 +436,16 @@ function Defragment.chooseAction(self)
 
     for i=1,maxColHeight + 1 do
         for j=1,#columns do
-            if self.stack.panels[i][j].color == 0 then
-                local emptySpace = ActionPanel(0, i, j)
+            if self.cpu.stack.panels[i][j].color == 0 then
+                local emptySpace = ActionPanel(self.cpu.stack.panels[i][j].id, 0, i, j)
                 table.insert(emptySpaces, {emptySpace, 0})
             end
         end
     end
 
     for i=1,#connectedPanelSections do
+        connectedPanelSections[i]:print()
+
         -- setting scores for panels
         for j=1,#panels do
             if panels[j][1].vector:inRectangle(connectedPanelSections[i].bottomLeftVector, connectedPanelSections[i].topRightVector) then
@@ -451,46 +460,88 @@ function Defragment.chooseAction(self)
         end
     end
 
+    --debugging
+    for i=1,#panels do
+        cpuLog("panel " .. panels[i][1].id .. " at coord " .. panels[i][1].vector:toString() .. " with value of " .. panels[i][2])
+    end
+    --debugging
+    for i=1,#emptySpaces do
+        cpuLog("empty space " .. i .. " at coord " .. emptySpaces[i][1].vector:toString() .. " with value of " .. emptySpaces[i][2])
+    end
+
+    table.sort(emptySpaces, function(a, b)
+        return a[2]>b[2]
+    end)
+
+    local emptySpacesToFill = { emptySpaces[1][1] }
+    for i=2,#emptySpaces do
+        if emptySpaces[i][2] == emptySpaces[1][2] then
+            table.insert(emptySpacesToFill, emptySpaces[i][1])
+        else
+            break
+        end
+    end
+
+    local cursorVec = GridVector(self.cpu.stack.cur_row, self.cpu.stack.cur_col)
+    
+    table.sort(emptySpacesToFill, function(a, b)
+        return a.vector:distance(cursorVec) < b.vector:distance(cursorVec)
+    end)
+
+    local panelsToMove
+    for i=1,#emptySpacesToFill do
+        if (not panelsToMove or #panelsToMove == 0) then
+            if #panels > 0 then
+                panelsToMove = self:GetFreshPanelsToMove(panels)
+            else
+                -- can't continue without panels, rerun defragmentation to source new panels
+                break
+            end
+        end
+
+        table.sort(panelsToMove, function(a, b)
+            return math.abs(a.column - emptySpacesToFill[i].column) <
+                                math.abs(b.column - emptySpacesToFill[i].column) and
+                                a.row >= emptySpacesToFill[i].row
+        end)
+
+        cpuLog("Trying to fill " .. #emptySpacesToFill .. " emptySpaces with " .. #panelsToMove .. " panels")
+
+        local panel = table.remove(panelsToMove, 1)
+        panel:print()
+        local action = Move(self.cpu.stack, panel, emptySpacesToFill[i].vector)
+        action:calculateExecution(self.cpu.stack.cur_row, self.cpu.stack.cur_col)
+        action:print()
+
+        if self.cpu.currentAction == nil then
+            self.cpu.currentAction = action
+        else
+            table.insert(self.cpu.actionQueue, action)
+        end
+    end
+
+    -- open issues with defragmenting:
+    -- tries to "upstack" (bottom row) panels
+    -- takes the panel instead of the closest panel from the column to downstack
+    -- needs to weigh distance on top of solely panel score for the panel selection
+    -- sometimes the first line of garbage panels is included in the connectedPanelSections somehow
+end
+
+function Defragment.GetFreshPanelsToMove(self, panels)
     table.sort(panels, function(a, b)
         return a[2]<b[2]
     end)
 
-    table.sort(emptySpaces, function(a, b)
-        return a[2]<b[2]
-    end)
-
-    local panelsToMove = { panels[1] }
-    for i=2,#panels do
-        if panels[i][2] == panels[1][2] then
-            table.insert(panelsToMove, panels[i])
-        else
-            break
-        end
+    -- need to rework this somehow to weigh distance against score
+    local panelScore = panels[1][2]
+    local firstPanel = table.remove(panels, 1)[1]
+    local panelsToMove = { firstPanel }
+    while #panels > 0 and panels[1][2] == panelScore do
+        local panel = table.remove(panels, 1)[1]
+        table.insert(panelsToMove, panel)
     end
 
-    local emptySpacesToFill = { emptySpaces[1] }
-    for i=2,#emptySpaces do
-        if emptySpaces[i][2] == emptySpaces[1][2] then
-            table.insert(emptySpacesToFill, emptySpaces[i])
-        else
-            break
-        end
-    end
-
-    table.sort(emptySpacesToFill, function(a, b)
-        return a[1].vector.distance(GridVector(self.cpu.stack.cursor_row, self.cpu.stack.cursor_col))
-                < b[1].vector.distance(GridVector(self.cpu.stack.cursor_row, self.cpu.stack.cursor_col))
-    end)
-
-    for i=1,#emptySpacesToFill do
-        table.sort(panelsToMove, function(a, b)
-            return math.abs(a[1].column - emptySpacesToFill[i][1].column) <
-                                math.abs(b[1].column - emptySpacesToFill[i][1].column)
-        end)
-
-        local panel = table.remove(table, 1)
-        table.insert(self.cpu.actionQueue, Move(self.cpu.stack, panel, emptySpacesToFill[i][1].vector))
-    end
+    return panelsToMove
 end
 
 Attack = class(
@@ -567,6 +618,7 @@ ActionPanel =
         actionPanel.cursorStartPos = nil
         actionPanel.isSetupPanel = false
         actionPanel.isExecutionPanel = false
+        -- add a reference to the original panel to track state etc.
     end
 )
 
@@ -583,7 +635,7 @@ function ActionPanel.print(self)
 end
 
 function ActionPanel.copy(self)
-    local panel = ActionPanel(self.color, self.row, self.column)
+    local panel = ActionPanel(self.id, self.color, self.row, self.column)
     if self.cursorStartPos then
         panel.cursorStartPos = GridVector(self.cursorStartPos.row, self.cursorStartPos.column)
     end
@@ -647,7 +699,7 @@ function Action.sortByDistanceToCursor(self, panels, cursorVec)
     --setting the correct cursor position for starting to work on each panel here
     for i = 1, #panels do
         local panel = panels[i]
-        self:setCursorStartPos(panel)
+        self.setCursorStartPos(panel)
     end
 
     table.sort(
@@ -660,12 +712,19 @@ function Action.sortByDistanceToCursor(self, panels, cursorVec)
     return panels
 end
 
-function Action.setCursorStartPos(panel)
-    if panel.vector.column > panel.targetVector.column then
-        panel.cursorStartPos = GridVector(panel.row, panel.column - 0.5)
-    else
-        panel.cursorStartPos = GridVector(panel.row, panel.column + 0.5)
+function Action.setCursorStartPos(panel, projectedCoordinate)
+    local coordinate = panel.vector
+
+    if projectedCoordinate then
+        coordinate = projectedCoordinate
     end
+
+    if coordinate.column > panel.targetVector.column then
+        panel.cursorStartPos = GridVector(coordinate.row, coordinate.column - 0.5)
+    else
+        panel.cursorStartPos = GridVector(coordinate.row, coordinate.column + 0.5)
+    end
+    cpuLog("Set cursorStartPos for panel " .. panel.id .. " to " .. panel.cursorStartPos:toString())
 end
 
 function Action.addCursorMovementToExecution(self, gridVector)
@@ -763,42 +822,46 @@ Move =
             action.stack = stack
             action.panel = panel
             action.targetVector = targetVector
-            panel.targetVector = targetVector
-            self:setCursorStartPos(action.panel)
+            action.panel.targetVector = targetVector
         end,
         Action
     )
 
     function Move.calculateExecution(self, cursor_row, cursor_col)
-        local generalDirection = self.panel.targetVector.column - self.panel.vector.column
+        self.executionPath = {}
+        cpuLog("cursor_row is " .. cursor_row .. ", cursor_col is " .. cursor_col)
         local cursorVec = GridVector(cursor_row, cursor_col)
-
+        cpuLog("cursorVec is " .. cursorVec:toString())
+        
+        local generalDirection = self.panel.targetVector.column - self.panel.vector.column
+        local movementVec = GridVector(0, (generalDirection / math.abs(generalDirection)) * -1)
         local projectedPos = self.panel.vector
-        local movementVec
 
-        if generalDirection > 0 then
-            movementVec = GridVector(1, 0)
-        else
-            movementVec = GridVector(-1, 0)
-        end
+        cpuLog("targetVec is " .. self.panel.targetVector:toString())
 
-        while not projectedPos.equals(self.panel.targetVector) do
-            local moveToPanelVec = cursorVec:difference(self.panel.cursorStartPos)
+        while projectedPos.column ~= self.panel.targetVector.column do
+            local moveToPanelVec = cursorVec:difference(projectedPos)
             self:addCursorMovementToExecution(moveToPanelVec)
             self:addPanelMovementToExecution(movementVec)
 
             -- find out where the panel ended up now
             -- the result of the swap
-            projectedPos = projectedPos.substract(movementVec)
-
+            projectedPos = projectedPos:substract(movementVec)
+            cpuLog("ProjectedPos after swap is " .. projectedPos:toString())
             -- panel is falling down
-            for r=projectedPos.row - 1,1 do
+            for r=projectedPos.row - 1,1,-1 do
                 if self.stack.panels[r][projectedPos.column].color == 0 then
-                    projectedPos = projectedPos.substract(GridVector(0, -1))
+                    projectedPos = projectedPos:substract(GridVector(1, 0))
                 else
                     break
                 end
             end
+            cpuLog("ProjectedPos after falling is " .. projectedPos:toString())
+
+            -- update the cursor position for the next round
+            cursorVec =
+            cursorVec:substract(moveToPanelVec):add(GridVector(0, movementVec.column - math.sign(movementVec.column)))
+            cpuLog('next cursor vec is ' .. cursorVec:toString())
         end
     end
 
@@ -1054,7 +1117,11 @@ end
 -- technically catches things inside the box too but is not realistic for the usecase
 -- maybe a better name would be "safe from rain" as it characterises better which spots are meant
 function GridVector.adjacentToRectangle(self, bottomLeft, topRight)
-    return self.row <= topRight.row and (self.column - 1 <= topRight.column or self.column + 1 >= bottomLeft.column)
+    return self.row <= topRight.row and self.column - 1 <= topRight.column and self.column + 1 >= bottomLeft.column
+end
+
+function GridVector.scalarMultiply(self, scalar)
+    return GridVector(self.row * scalar, self.column * scalar)
 end
 
 function math.sign(x)
@@ -1096,20 +1163,11 @@ end
 --gets all panels in the stack that are in the first tier of the stack
 function Stack.getTotalTier1PanelsCount(self)
     local panelCount = 0
-
     local columns = self:getTier1PanelsAsColumns()
 
     for i = 1, #columns do
         for j = 1, #columns[i] do
-            local panel = columns[i][j]
-            if panel.color > 0 and panel.color < 9 then
-                if
-                    panel.state == 'normal' or panel.state == 'hovering' or panel.state == 'falling' or
-                        panel.state == 'landing'
-                 then
-                    panelCount = panelCount + 1
-                end
-            end
+            panelCount = panelCount + 1
         end
     end
 
@@ -1125,9 +1183,7 @@ function Stack.getPanelsAsColumns(self)
             columns[i] = {}
             for j = 1, #self.panels do
                 local panel = self.panels[j][i]
-                if panel.color > 0 and panel.color < 9 then
-                    columns[i][j] = ActionPanel(self.panels[j][i].color, i, j)
-                end
+                columns[i][j] = ActionPanel(panel.id, panel.color, j, i)
             end
         end
     end
@@ -1145,8 +1201,7 @@ function Stack.getTier1PanelsAsColumns(self)
         for j = #columns[i], 1,-1 do
             if columns[i][j].color == 0 then
                 table.remove(columns[i], j)
-            end
-            if columns[i][j].color == 9 then
+            elseif columns[i][j].color == 9 then
                 for k = #columns[i],j,-1 do
                     table.remove(columns[i], k)
                 end
@@ -1185,18 +1240,7 @@ function Stack.getTier1ConnectedPanelSections(self)
 
         --match with height = baseHeight - 1 and heigh = baseHeight
         for height = baseHeight - 1, baseHeight do
-
-            -- determine if this height+column is already part of a section
-            local repVec = GridVector(height, i)
-            local alreadyExists = false
-            for n=1,#connectedPanelSections do
-                if repVec.inRectangle(connectedPanelSections[n].bottomLeftVector,connectedPanelSections[n].topRightVector) then
-                    alreadyExists = true
-                    break
-                end
-            end
-
-            if not alreadyExists == true then
+            if alreadyExists ~= true then
                 local connectedPanelCount = baseHeight
                 local colsToTheLeft = 0
                 local colsToTheRight = 0
@@ -1221,18 +1265,47 @@ function Stack.getTier1ConnectedPanelSections(self)
                 end
 
                 local cols = 1 + colsToTheLeft + colsToTheRight
+                cpuLog("Found " .. cols .. " columns around column " .. i .. " with a height of >= " .. height)
 
                 if cols >= 2 and (connectedPanelCount / cols) > 2 then
                     --suffices the 2x3 criteria
 
-                    local startCol = i - colsToTheLeft
-                    local endCol = i + colsToTheRight
-                    local bottomLeft = GridVector(1, startCol)
-                    local topRight = GridVector(height, endCol)
+                    --add all valid subsections in the section
+                    for c=cols,2,-1 do
+                        for rows=height+1,3,-1 do
+                            for col_offset=i - colsToTheLeft,i - colsToTheLeft + (cols - c) do
+                                
+                                local startCol = col_offset
+                                local endCol = col_offset + c - 1 -- -1 because the col range is [], not [)
+                                local bottomLeft = GridVector(1, startCol)
+                                local topRight = GridVector(rows, endCol)
 
-                    table.insert(connectedPanelSections,
-                        ConnectedPanelSection(bottomLeft, topRight,
-                                            connectedPanelCount, self.panels))
+                                local alreadyExists = false
+                                -- but only those that don't exist yet
+                                for n=1,#connectedPanelSections do
+                                    if connectedPanelSections[n].bottomLeftVector:equals(bottomLeft) and connectedPanelSections[n].topRightVector:equals(topRight) then
+                                        alreadyExists = true
+                                        break
+                                    end
+                                end
+
+                                if alreadyExists == false then
+                                    -- count the panels
+                                    cpuLog("Counting panels for subsection " .. bottomLeft:toString() .. "," .. topRight:toString())
+                                    cpuLog("c: " .. c .. ",rows: " .. rows .. ",startCol: " .. startCol .. ",endCol: " .. endCol .. ",col_offset: " .. col_offset)
+                                    local panelCount = 0
+                                    for l=startCol,endCol do
+                                        panelCount = panelCount + math.min(rows, #columns[l])
+                                    end
+                
+                                    table.insert(connectedPanelSections,
+                                    ConnectedPanelSection(bottomLeft, topRight,
+                                                          panelCount, self.panels))
+                                end
+
+                            end
+                        end
+                    end
                 end
             end      
         end
@@ -1253,5 +1326,10 @@ ConnectedPanelSection = class(function(panelSection, bottomLeftVector, topRightV
         end
     end
 end)
+
+function ConnectedPanelSection.print(self)
+    cpuLog("ConnectedPanelSection with anchors " .. self.bottomLeftVector:toString() .. ", " .. self.topRightVector:toString() 
+            .. " containing a total of " .. self.numberOfPanels .. " panels")
+end
 
 --#endregion
