@@ -14,16 +14,24 @@ function select_screen_graphics.draw(self, select_screen)
 
   set_color(unpack(colors.white))
 
+  if self.select_screen.confirmLeave == true then
+    self:drawLeaveConfirmationDialog()
+  else
+    self:drawGameSetupGrid()
+  end
+end
+
+function select_screen_graphics.drawGameSetupGrid(self)
   -- Go through the grid, drawing the buttons, handling horizontal spans
-  for i = 1, select_screen.ROWS do
-    for j = 1, select_screen.COLUMNS do
+  for i = 1, self.select_screen.ROWS do
+    for j = 1, self.select_screen.COLUMNS do
       local value = self.select_screen.drawMap[self.select_screen.current_page][i][j]
       local span_width = 1
       if self.is_special_value[value] then
         if j == 1 or self.select_screen.drawMap[self.select_screen.current_page][i][j - 1] ~= value then
           -- detect how many blocks the special value spans
-          if j ~= select_screen.COLUMNS then
-            for u = j + 1, select_screen.COLUMNS do
+          if j ~= self.select_screen.COLUMNS then
+            for u = j + 1, self.select_screen.COLUMNS do
               if self.select_screen.drawMap[self.select_screen.current_page][i][u] == value then
                 span_width = span_width + 1
               else
@@ -47,6 +55,30 @@ function select_screen_graphics.draw(self, select_screen)
   self:drawMatchTypeString()
   self:drawPagingIndicator()
   self:draw1pRecords()
+end
+
+function select_screen_graphics.drawLeaveConfirmationDialog(self)
+  local function escape_confirmation_dialog()
+    self.confirmationDialog:set_active_idx(#self.confirmationDialog.buttons)
+  end
+
+  local function confirmation_dialog_no()
+    self.select_screen.confirmLeave = false
+  end
+
+  local function confirmation_dialog_yes()
+    self.select_screen:on_quit()
+  end
+
+  if not self.confirmationDialog then
+    self.confirmationDialog = Click_menu(600, 100, nil, themes[config.theme].main_menu_max_height, 1)
+
+    self.confirmationDialog:add_button(loc("yes"), confirmation_dialog_yes, escape_confirmation_dialog, nil, nil)
+    self.confirmationDialog:add_button(loc("no"), confirmation_dialog_no, confirmation_dialog_no, nil, nil)
+  end
+
+  gprint(loc("ss_confirmation_text"), themes[config.theme].main_menu_screen_pos[1], 250)
+  self.confirmationDialog:draw()
 end
 
 function select_screen_graphics.drawPlayerInfo(self)

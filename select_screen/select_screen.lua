@@ -184,7 +184,7 @@ function select_screen.on_select(self, player, super)
     end
     player.cursor.selected = not player.cursor.selected
   elseif player.cursor.positionId == "__Leave" then
-    return self:on_quit()
+    self.confirmLeave = true
   elseif player.cursor.positionId == "__Random" then
     player.selectedCharacter = random_character_special_value
     refreshBasedOnOwnMods(player)
@@ -554,6 +554,7 @@ function select_screen.sendMenuState(self)
 end
 
 function select_screen.handleInput(self)
+  local quitCallback = nil
   local up, down, left, right = {-1, 0}, {1, 0}, {0, -1}, {0, 1}
   if not GAME.battleRoom.spectating then
     local local_players
@@ -612,22 +613,29 @@ function select_screen.handleInput(self)
         local long_enter, long_enter_callback = menu_long_enter(i, true)
         local normal_enter, normal_enter_callback = menu_enter(i, true)
         if long_enter then
-          if not self:on_select(player, true) then
+          quitCallback = self:on_select(player, true)
+          if quitCallback == nil then
             long_enter_callback()
           end
         elseif normal_enter and (not cursor.can_super_select or select_being_pressed_ratio(i) < super_selection_enable_ratio) then
-          if not self:on_select(player, false) then
+          quitCallback = self:on_select(player, false)
+          if quitCallback == nil then
             normal_enter_callback()
           end
         elseif menu_escape() then
           if cursor.positionId == "__Leave" then
-            return self:on_quit()
+            quitCallback = self:on_quit()
+          else
+            cursor.selected = false
+            cursor.position = shallowcpy(self.name_to_xy_per_page[self.current_page]["__Leave"])
+            cursor.positionId = "__Leave"
+            cursor.can_super_select = false
           end
-          cursor.selected = false
-          cursor.position = shallowcpy(self.name_to_xy_per_page[self.current_page]["__Leave"])
-          cursor.positionId = "__Leave"
-          cursor.can_super_select = false
         end
+      end
+
+      if quitCallback then
+        return quitCallback
       end
 
       player.cursor.positionId = self.drawMap[self.current_page][cursor.position[1]][cursor.position[2]]
@@ -878,6 +886,8 @@ function select_screen.initializeAttackEngine(self)
 end
 
 function select_screen.initialize(self, character_select_mode)
+  -- makes it so the player leaves the room without confirmation
+  self.confirmLeave = false
   self.character_select_mode = character_select_mode
   self.players = {}
   for i=1, tonumber(self.character_select_mode:sub(1, 1)) do
@@ -943,6 +953,9 @@ function select_screen.main(self, character_select_mode, roomInitializationMessa
       function()
         self.menu_clock = self.menu_clock + 1
 
+        if graphics.confirmationDialog then
+          graphics.confirmationDialog:update()
+        end
         character_loader_update()
         stage_loader_update()
         self:refreshLoadingState(self.my_player_number)
