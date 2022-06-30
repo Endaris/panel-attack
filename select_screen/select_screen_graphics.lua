@@ -68,6 +68,7 @@ function select_screen_graphics.drawLeaveConfirmationDialog(self)
 
   local function confirmation_dialog_yes()
     self.select_screen:on_quit()
+    self.confirmationDialog = nil
   end
 
   if not self.confirmationDialog then

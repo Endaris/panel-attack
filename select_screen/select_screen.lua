@@ -173,47 +173,58 @@ function select_screen.move_cursor(self, cursor, direction)
 end
 
 -- Function to know what to do when you press select on your current cursor
--- returns true if a sound should be played
+-- returns 2 parameters,
+-- param 1 returns true if a character selection sound has been played, false otherwise
+-- param 2 returns a function callback if the player desires to quit the room, nil otherwise
 function select_screen.on_select(self, player, super)
-  local noisy = false
-  local selectable = {__Stage = true, __Panels = true, __Level = true, __Ready = true}
-  if selectable[player.cursor.positionId] then
-    if player.cursor.selected and player.cursor.positionId == "__Stage" then
-      -- load stage even if hidden!
-      stage_loader_load(player.stage)
-    end
-    player.cursor.selected = not player.cursor.selected
-  elseif player.cursor.positionId == "__Leave" then
-    self.confirmLeave = true
-  elseif player.cursor.positionId == "__Random" then
-    player.selectedCharacter = random_character_special_value
-    refreshBasedOnOwnMods(player)
-    player.cursor.positionId = "__Ready"
-    player.cursor.position = shallowcpy(self.name_to_xy_per_page[self.current_page]["__Ready"])
-    player.cursor.can_super_select = false
-  elseif player.cursor.positionId == "__Mode" then
-    player.ranked = not player.ranked
-  elseif (player.cursor.positionId ~= "__Empty" and player.cursor.positionId ~= "__Reserved") then
-    player.selectedCharacter = player.cursor.positionId
-    local character = characters[player.selectedCharacter]
-    if character then
-      noisy = characters[player.selectedCharacter]:play_selection_sfx()
-      if super then
-        if character.stage then
-          player.selectedStage = character.stage
-        end
-        if character.panels then
-          player.panels_dir = character.panels
-        end
+  if self.confirmLeave == true then
+    -- inputs are handled by the click menu
+    return true, nil
+  else
+    local noisy = false
+    local selectable = {__Stage = true, __Panels = true, __Level = true, __Ready = true}
+    if selectable[player.cursor.positionId] then
+      if player.cursor.selected and player.cursor.positionId == "__Stage" then
+        -- load stage even if hidden!
+        stage_loader_load(player.stage)
       end
+      player.cursor.selected = not player.cursor.selected
+    elseif player.cursor.positionId == "__Leave" then
+      if self:isNetPlay() then
+        self.confirmLeave = true
+      else
+        return false, self:on_quit()
+      end
+    elseif player.cursor.positionId == "__Random" then
+      player.selectedCharacter = random_character_special_value
       refreshBasedOnOwnMods(player)
+      player.cursor.positionId = "__Ready"
+      player.cursor.position = shallowcpy(self.name_to_xy_per_page[self.current_page]["__Ready"])
+      player.cursor.can_super_select = false
+    elseif player.cursor.positionId == "__Mode" then
+      player.ranked = not player.ranked
+    elseif (player.cursor.positionId ~= "__Empty" and player.cursor.positionId ~= "__Reserved") then
+      player.selectedCharacter = player.cursor.positionId
+      local character = characters[player.selectedCharacter]
+      if character then
+        noisy = characters[player.selectedCharacter]:play_selection_sfx()
+        if super then
+          if character.stage then
+            player.selectedStage = character.stage
+          end
+          if character.panels then
+            player.panels_dir = character.panels
+          end
+        end
+        refreshBasedOnOwnMods(player)
+      end
+      --When we select a character, move cursor to "__Ready"
+      player.cursor.positionId = "__Ready"
+      player.cursor.position = shallowcpy(self.name_to_xy_per_page[self.current_page]["__Ready"])
+      player.cursor.can_super_select = false
     end
-    --When we select a character, move cursor to "__Ready"
-    player.cursor.positionId = "__Ready"
-    player.cursor.position = shallowcpy(self.name_to_xy_per_page[self.current_page]["__Ready"])
-    player.cursor.can_super_select = false
+    return noisy, nil
   end
-  return noisy
 end
 
 function select_screen.isNetPlay(self)
@@ -609,17 +620,18 @@ function select_screen.handleInput(self)
           self:move_cursor(cursor, right)
         end
       else
-        -- code below is bit hard to read: basically we are storing the default sfx callbacks until it's needed (or not!) based on the on_select method
+        -- storing the default sfx callbacks so we know whether we want to play them or not
         local long_enter, long_enter_callback = menu_long_enter(i, true)
         local normal_enter, normal_enter_callback = menu_enter(i, true)
+        local characterSelectionSoundHasBeenPlayed
         if long_enter then
-          quitCallback = self:on_select(player, true)
-          if quitCallback == nil then
+          characterSelectionSoundHasBeenPlayed, quitCallback = self:on_select(player, true)
+          if not characterSelectionSoundHasBeenPlayed then
             long_enter_callback()
           end
         elseif normal_enter and (not cursor.can_super_select or select_being_pressed_ratio(i) < super_selection_enable_ratio) then
-          quitCallback = self:on_select(player, false)
-          if quitCallback == nil then
+          characterSelectionSoundHasBeenPlayed, quitCallback = self:on_select(player, false)
+          if not characterSelectionSoundHasBeenPlayed then
             normal_enter_callback()
           end
         elseif menu_escape() then
@@ -953,9 +965,6 @@ function select_screen.main(self, character_select_mode, roomInitializationMessa
       function()
         self.menu_clock = self.menu_clock + 1
 
-        if graphics.confirmationDialog then
-          graphics.confirmationDialog:update()
-        end
         character_loader_update()
         stage_loader_update()
         self:refreshLoadingState(self.my_player_number)
@@ -964,6 +973,9 @@ function select_screen.main(self, character_select_mode, roomInitializationMessa
         end
         ret = self:handleInput()
         self:refreshReadyStates()
+        if graphics.confirmationDialog and self.confirmLeave then
+          graphics.confirmationDialog:update()
+        end
       end
     )
 
