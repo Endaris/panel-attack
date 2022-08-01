@@ -60,8 +60,7 @@ Stack =
 
     -- frame.png dimensions
     if wantsCanvas then
-      s.canvas = love.graphics.newCanvas(104 * GFX_SCALE, 204 * GFX_SCALE)
-      s.canvas:setFilter("nearest", "nearest")
+      s.canvas = love.graphics.newCanvas(104 * GFX_SCALE, 204 * GFX_SCALE, {dpiscale=GAME.canvasXScale})
     end
 
     if level then
@@ -468,6 +467,14 @@ end
 -- Saves state in backups in case its needed for rollback
 -- NOTE: the CLOCK time is the save state for simulating right BEFORE that clock time is simulated
 function Stack.saveForRollback(self)
+
+  -- If we are behind the time that the opponent's new attacks would land, then we don't need to rollback
+  -- don't save the rollback info for performance reasons
+  -- TODO still save for replays so we can rewind
+  if self.garbage_target and self.garbage_target.CLOCK + GARBAGE_DELAY_LAND_TIME > self.CLOCK then
+    return
+  end
+
   local prev_states = self.prev_states
   local garbage_target = self.garbage_target
   self.garbage_target = nil
@@ -663,7 +670,6 @@ end
 
 
 function Stack.set_puzzle_state(self, puzzle)
-  
   -- Copy the puzzle into our state
   local boardSizeInPanels = self.width * self.height
   while string.len(puzzle.stack) < boardSizeInPanels do
@@ -671,9 +677,6 @@ function Stack.set_puzzle_state(self, puzzle)
   end
 
   local puzzleString = puzzle.stack
-  if puzzle.randomizeColors then
-    puzzleString = Puzzle.randomizeColorString(puzzleString)
-  end
 
   self.puzzle = puzzle
   self.panels = self:puzzleStringToPanels(puzzleString)
@@ -690,10 +693,10 @@ function Stack.puzzleStringToPanels(self, puzzleString)
   local garbageStartColumn = nil
   local isMetal = false
   local connectedGarbagePanels = nil
+  local rowCount = string.len(puzzleString) / 6
   -- chunk the aprilstack into rows
   -- it is necessary to go bottom up because garbage block panels contain the offset relative to their bottom left corner
-  local panel_id = 1
-  for row = 1, 12 do
+  for row = 1, rowCount do
       local rowString = string.sub(puzzleString, #puzzleString - 5, #puzzleString)
       puzzleString = string.sub(puzzleString, 1, #puzzleString - 6)
       -- copy the panels into the row
@@ -731,10 +734,12 @@ function Stack.puzzleStringToPanels(self, puzzleString)
               local height = connectedGarbagePanels[#connectedGarbagePanels].y_offset + 1
               -- this is disregarding the possible existence of irregularly shaped garbage
               local width = garbageStartColumn - column + 1
+              local shake_time = garbage_to_shake_time[width * height]
               for i = 1, #connectedGarbagePanels do
                 connectedGarbagePanels[i].x_offset = connectedGarbagePanels[i].x_offset - column
                 connectedGarbagePanels[i].height = height
                 connectedGarbagePanels[i].width = width
+                connectedGarbagePanels[i].shake_time = shake_time
                 -- panels are already in the main table and they should already be updated by reference
               end
               garbageStartRow = nil
@@ -1233,7 +1238,7 @@ function Stack.simulate(self)
     if self.speed ~= 0 and not self.manual_raise and self.stop_time == 0 and not self.rise_lock then
       if self.match.mode == "puzzle" then
         -- only reduce health after the first swap to give the player a chance to strategize
-        if self.puzzle.puzzleType == "clear" and self.puzzle.remaining_moves - self.puzzle.moves < 0 then
+        if self.puzzle.puzzleType == "clear" and self.puzzle.remaining_moves - self.puzzle.moves < 0 and self.shake_time < 1 then
           self.health = self.health - 1
           -- no gameover because it can't return otherwise, exit is taken care of by puzzle_failed
         end
@@ -2230,7 +2235,7 @@ end
 
 function Stack.processPuzzleSwap(self)
   if self.puzzle then
-    if self.puzzle.remaining_moves == 0 and self.puzzle.puzzleType == "clear" then
+    if self.puzzle.remaining_moves == self.puzzle.moves and self.puzzle.puzzleType == "clear" then
       -- start depleting stop / shake time
       self.stop_time = self.puzzle.stop_time
       self.shake_time = self.puzzle.shake_time
@@ -2328,6 +2333,15 @@ function Stack.check_matches(self)
     end
   end
 
+  -- Record whether each panel excludes matching once to prevent duplicated work.
+  local excludeMatchTable = {}
+  for row = 1, self.height do
+    excludeMatchTable[row] = {}
+    for col = 1, self.width do
+      excludeMatchTable[row][col] = panels[row][col]:exclude_match()
+    end
+  end
+
   local is_chain = false
   local combo_size = 0
   local floodQueue = Queue()
@@ -2335,7 +2349,7 @@ function Stack.check_matches(self)
     for col = 1, self.width do
       if
         row ~= 1 and row ~= self.height and --check vertical match centered here.
-          (not (panels[row - 1][col]:exclude_match() or panels[row][col]:exclude_match() or panels[row + 1][col]:exclude_match())) and
+          (not (excludeMatchTable[row - 1][col] or excludeMatchTable[row][col] or excludeMatchTable[row + 1][col])) and
           panels[row][col].color == panels[row - 1][col].color and
           panels[row][col].color == panels[row + 1][col].color
        then
@@ -2355,7 +2369,7 @@ function Stack.check_matches(self)
       end
       if
         col ~= 1 and col ~= self.width and --check horiz match centered here.
-          (not (panels[row][col - 1]:exclude_match() or panels[row][col]:exclude_match() or panels[row][col + 1]:exclude_match())) and
+          (not (excludeMatchTable[row][col - 1] or excludeMatchTable[row][col] or excludeMatchTable[row][col + 1])) and
           panels[row][col].color == panels[row][col - 1].color and
           panels[row][col].color == panels[row][col + 1].color
        then
