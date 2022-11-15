@@ -1,5 +1,6 @@
 local class = require("class")
 local UIElement = require("ui.UIElement")
+local implementsText = require("ui.TextElement")
 local buttonManager = require("ui.buttonManager")
 local GraphicsUtil = require("graphics_util")
 
@@ -29,13 +30,9 @@ local Button = class(
     end
     self.onMouseUp = options.onMouseUp or function() end
     
-    -- text field is set in base class (UIElement)
-    local textWidth, textHeight = self.text:getDimensions()
-    -- stretch to fit text
-    self.width = math.max(textWidth + 6, self.width)
-    self.height = math.max(textHeight + 6, self.height)
     buttonManager.buttons[self.id] = self.isVisible and self or nil
     self.TYPE = "Button"
+    implementsText(self, options)
   end,
   UIElement
 )
