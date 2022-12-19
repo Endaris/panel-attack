@@ -22,6 +22,17 @@ love ./
 
 or via drag and drop with the repository folder (not recommended).
 
+### Formatting
+
+You should set your editor to use 2 spaces of identation.  
+For those using VSCode we recommend using this [styling extension](https://marketplace.visualstudio.com/items?itemName=Koihik.vscode-lua-format) with the following configuration:  
+
+```
+indent_width: 2
+column_limit: 140
+keep_simple_control_block_one_line: false
+keep_simple_function_one_line: false
+```
 
 ## Repository
 
