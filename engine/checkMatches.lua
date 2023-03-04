@@ -64,6 +64,7 @@ function Stack:checkMatches()
     self.manual_raise = false
 
     local attackGfxOrigin = self:matchMatchingPanels(matchingPanels, isChainLink, comboSize)
+    self.attackOriginPerFrame[self.CLOCK] = attackGfxOrigin
     local garbagePanels = self:getConnectedGarbagePanels(matchingPanels)
     local garbagePanelCountOnScreen = 0
     if #garbagePanels > 0 then

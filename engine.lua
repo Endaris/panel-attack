@@ -266,6 +266,10 @@ Stack = class(function(s, arguments)
                                                    themes[config.theme].images.IMG_multibar_shake_bar:getHeight(),
                                                    themes[config.theme].images.IMG_multibar_shake_bar:getWidth(),
                                                    themes[config.theme].images.IMG_multibar_shake_bar:getHeight())
+
+  s.attackOriginPerFrame = {}
+  s.receivedAttacks = {}
+  s.heldGarbage = {}
 end)
 
 function Stack.setLevel(self, level)
@@ -957,6 +961,8 @@ function Stack.run(self)
 
   self:setupInput()
   self:simulate()
+  -- run this at the end of run so we don't lose a frame only performing rollback
+  self:fetchAttacks()
 end
 
 -- Grabs input from the buffer of inputs or from the controller and sends out to the network if needed.
@@ -2347,4 +2353,64 @@ function Stack.updateRiseLock(self)
   if self.prev_rise_lock and not self.rise_lock then
     self.prevent_manual_raise = false
   end
+end
+
+local GARBAGE_TOTAL_DELAY = GARBAGE_TRANSIT_TIME + GARBAGE_TELEGRAPH_TIME + GARBAGE_DELAY_LAND_TIME
+-- fetches attacks from the garbage target and adds them to the receivedAttacks table
+function Stack:fetchAttacks()
+  if self.garbageSource then
+    local garbageSource = self.garbageSource
+    local receivedAttacks = self.receivedAttacks
+    receivedAttacks.currentChainStartFrame = garbageSource.currentChainStartFrame
+    for frame = math.max(1, self.CLOCK - (MAX_LAG * 2)), self.CLOCK do
+      local earliestGarbageLandedTime = self.CLOCK + 1
+      -- update the received attacks
+      if garbageSource.chains[frame] and not receivedAttacks.chains[frame] then
+        -- by passing via reference, the chain will update automatically
+        receivedAttacks.chains[frame] = garbageSource.chains[frame]
+
+        if frame == receivedAttacks.currentChainStartFrame then
+          -- chain is still on-going, all good
+        else
+          -- chain has ended, check frame time of earliest chain delivery
+          earliestGarbageLandedTime = math.min(earliestGarbageLandedTime, receivedAttacks.chains[frame].finish + GARBAGE_TOTAL_DELAY)
+        end
+      end
+      if garbageSource.combos[frame] and not receivedAttacks.combos[frame] then
+        receivedAttacks.combos[frame] = garbageSource.combos[frame]
+        earliestGarbageLandedTime = math.min(earliestGarbageLandedTime, frame + GARBAGE_TOTAL_DELAY)
+      end
+
+
+      -- the garbageSource got rolled back and one of its chain attacks disappeared
+      if receivedAttacks.chains[frame] and not garbageSource.chains[frame] then
+        -- normally the same attack will be sent on rerun
+        -- so only delete if the source makes it past the attack frame
+        if garbageSource.CLOCK >= frame then
+          receivedAttacks.chains[frame] = nil
+          earliestGarbageLandedTime = math.min(earliestGarbageLandedTime, receivedAttacks.chains[frame].finish + GARBAGE_TOTAL_DELAY)
+        end
+      end
+
+      -- the garbageSource got rolled back and one of its combo attacks disappeared
+      if receivedAttacks.combos[frame] and not garbageSource.combos[frame] then
+        -- normally the same attack will be sent on rerun
+        -- so only delete if the source makes it past the attack frame
+        if garbageSource.CLOCK >= frame then
+          receivedAttacks.combos[frame] = nil
+          earliestGarbageLandedTime = math.min(earliestGarbageLandedTime, frame + GARBAGE_TOTAL_DELAY)
+        end
+      end
+
+      if self.CLOCK >= earliestGarbageLandedTime then
+        -- our stack has incorrect garbage we need to rollback to make that undone
+        -- TODO: check if the garbage *really* (would have) landed - if it was held back, we may not actually have to rollback
+        self:rollbackToFrame(earliestGarbageLandedTime - 1)
+      end
+    end
+  end
+end
+
+function Stack:updateHeldGarbage()
+
 end
