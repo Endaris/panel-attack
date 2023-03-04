@@ -377,13 +377,15 @@ function Stack:recordComboHistory(time, width, height, metal)
 end
 
 function Stack:recordChainHistory()
+  local chain
   if self.chain_counter == 2 then
-    self.currentChainStartFrame = self.CLOCK
-    self.chains[self.currentChainStartFrame] = {starts = {}}
+    chain = {links = {}}
+    self.chains:push(chain)
+  else
+    chain = self.chains[self.chains.last]
   end
-  local currentChainData = self.chains[self.currentChainStartFrame]
-  currentChainData.size = self.chain_counter
-  currentChainData.starts[#currentChainData.starts + 1] = self.CLOCK
+  chain.size = self.chain_counter
+  chain.starts[#chain.links+1] = self.CLOCK
 end
 
 function Stack:awardStopTime(isChain, comboSize)

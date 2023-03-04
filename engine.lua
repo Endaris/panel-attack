@@ -222,7 +222,7 @@ Stack = class(function(s, arguments)
   end
 
   s.combos = {} -- Tracks the combos made throughout the whole game. Key is the clock time, value is the combo size
-  s.chains = {} -- Tracks the chains made throughout the whole game
+  s.chains = Queue() -- Tracks the chains made throughout the whole game
   --[[
         Key - CLOCK time the chain started
         Value -
@@ -1397,9 +1397,8 @@ function Stack.simulate(self)
 
     -- if at the end of the routine there are no chain panels, the chain ends.
     if self.chain_counter ~= 0 and not self:hasChainingPanels() then
-      self.chains[self.currentChainStartFrame].finish = self.CLOCK
-      self.chains[self.currentChainStartFrame].size = self.chain_counter
-      self.currentChainStartFrame = nil
+      self.chains[self.chains.last].finish = self.CLOCK
+      self.chains[self.chains.last].size = self.chain_counter
       if self:shouldChangeSoundEffects() then
         SFX_Fanfare_Play = self.chain_counter
       end
@@ -2362,6 +2361,30 @@ function Stack:fetchAttacks()
     local garbageSource = self.garbageSource
     local receivedAttacks = self.receivedAttacks
     receivedAttacks.currentChainStartFrame = garbageSource.currentChainStartFrame
+    for i = garbageSource.chains.first, garbageSource.chains.last do
+      local chainStartFrame = garbageSource.chains[i].links[1]
+      -- let's add new chains
+      if not receivedAttacks.chains[chainStartFrame] then
+        receivedAttacks[chainStartFrame] = garbageSource.chains[i]
+        if i == garbageSource.chains.last and garbageSource.chains[i].finish == nil then
+          -- this is an ongoing chain, just add it and be done with it
+        else
+          local earliestDropFrame = garbageSource.chains[i].finish
+          -- this is a finished chain, we'll need to check for rollback!
+          if earliestDropFrame + GARBAGE_TOTAL_DELAY > self.CLOCK then
+            -- chain can safely be dropped
+          else
+            -- chain should have been dropped already!
+            self:rollbackToFrame(earliestDropFrame)
+            receivedAttacks[chainStartFrame] = garbageSource.chains[i]
+            --self.heldGarbage[#self.heldGarbage+1] = 
+          end
+
+        end
+      end
+      
+    end
+
     for frame = math.max(1, self.CLOCK - (MAX_LAG * 2)), self.CLOCK do
       local earliestGarbageLandedTime = self.CLOCK + 1
       -- update the received attacks
