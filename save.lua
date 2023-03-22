@@ -181,6 +181,13 @@ function read_attack_files(path)
   end
 end
 
+function readAttackFile(path)
+  if love.filesystem.getInfo(path, "file") then
+    local fileContent = love.filesystem.read(path)
+    return json.decode(fileContent)
+  end
+end
+
 function print_list(t)
   for i, v in ipairs(t) do
     print(v)
