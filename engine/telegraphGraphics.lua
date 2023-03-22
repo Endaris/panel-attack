@@ -234,23 +234,8 @@ function TelegraphGraphics:renderTelegraph()
 
       -- Render the stop times above blocks for debug purposes
       if config.debug_mode then
-        local stopperTime = nil
-
-        if garbage.isChain then
-          stopperTime = telegraph.stoppers.chain[telegraph.garbageQueue.chainGarbage.first]
-          if stopperTime and garbage.finalized then
-            stopperTime = stopperTime .. " F"
-          end
-        else
-          if garbage.isMetal then
-            stopperTime = telegraph.stoppers.metal
-          else
-            stopperTime = telegraph.stoppers.combo[garbage.width]
-          end
-        end
-
-        if stopperTime then
-          gprintf(stopperTime, drawX * GFX_SCALE, (drawY - 8) * GFX_SCALE, 70, "center", nil, 1, LARGE_FONT)
+        if garbage.releaseTime then
+          gprintf(garbage.releaseTime, drawX * GFX_SCALE, (drawY - 8) * GFX_SCALE, 70, "center", nil, 1, LARGE_FONT)
         end
       end
 

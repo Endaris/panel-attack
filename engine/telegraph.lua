@@ -78,7 +78,6 @@ function Telegraph:registerAttack(garbage, attackOriginColumn, attackOriginRow, 
       self.attacks[timeAttackInteracts] = {}
     end
     -- we don't want to use the same object as in the garbage queue so they don't change each other
-    garbage = deepcpy(garbage)
     self.attacks[timeAttackInteracts][#self.attacks[timeAttackInteracts] + 1] = {
       timeAttackInteracts = timeAttackInteracts,
       originColumn = attackOriginColumn,

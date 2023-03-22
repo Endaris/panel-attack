@@ -185,7 +185,6 @@ function GarbageQueue:growChain(timeAttackInteracts, newChain, releaseTime)
     self.currentChain.timeAttackInteracts = timeAttackInteracts
   end
   self.currentChain.releaseTime = releaseTime
-  orderGarbage(self.garbage)
   --updateReleaseTimes(self.garbage)
 
   return {self.currentChain}

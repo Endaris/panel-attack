@@ -1808,6 +1808,7 @@ function Stack:receiveGarbage(frameToReceive, garbageList)
 
   local garbage = self.later_garbage[frameToReceive] or {}
   for i = 1, #garbageList do
+    garbageList[i].releaseTime = frameToReceive
     garbage[#garbage + 1] = garbageList[i]
   end
   self.later_garbage[frameToReceive] = garbage
