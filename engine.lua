@@ -1463,7 +1463,7 @@ function Stack.simulate(self)
     end
     
     if self.later_garbage[self.CLOCK] then
-      self.garbage_q:push(self.later_garbage[self.CLOCK])
+      self.garbage_q:pushTable(self.later_garbage[self.CLOCK])
       self.later_garbage[self.CLOCK] = nil
     end
 

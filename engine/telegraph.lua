@@ -2,14 +2,9 @@ local logger = require("logger")
 require("engine.telegraphGraphics")
 
 Telegraph = class(function(self, sender, receiver)
-  -- Stores the actual queue of garbages in the telegraph but not queued long enough to exceed the "stoppers"
+  -- Stores the actual queue of garbages in the telegraph, including when each piece of garbage may get released
   self.garbageQueue = GarbageQueue()
 
-  -- Attacks must stay in the telegraph a certain amount of time before they can be sent, we track this with "stoppers"
-  -- note: keys for stoppers such as self.stoppers.chain[some_key]
-  -- will be the garbage block's index in the queue , and value will be the frame the stopper expires).
-  -- keys for self.stoppers.combo[some_key] will be garbage widths, and values will be frame_to_release
-  self.stoppers = {chain = {}, combo = {}, metal = nil}
   -- The stack that sent this garbage
   self.sender = sender
   -- The stack that is receiving the garbage; not directly referenced for functionality but used for determining the draw position
@@ -46,7 +41,6 @@ function Telegraph.rollbackCopy(source, other)
   end
 
   other.garbageQueue = source.garbageQueue:makeCopy()
-  other.stoppers = deepcpy(source.stoppers)
   if config.renderAttacks then
     other.attacks = deepcpy(source.attacks)
   end
@@ -96,28 +90,17 @@ end
 
 function Telegraph:addComboGarbage(garbage, timeAttackInteracts)
   logger.debug("Telegraph.add_combo_garbage " .. (garbage.width or "nil") .. " " .. (garbage.isMetal and "true" or "false"))
-  local garbageToSend = {}
-  if garbage.isMetal and (GAME.battleRoom.trainingModeSettings == nil or not GAME.battleRoom.trainingModeSettings.mergeComboMetalQueue) then
-    garbageToSend[#garbageToSend + 1] = {
-      width = 6,
-      height = 1,
-      isMetal = true,
-      isChain = false,
-      timeAttackInteracts = timeAttackInteracts
-    }
-    self.stoppers.metal = timeAttackInteracts + GARBAGE_TRANSIT_TIME + GARBAGE_TELEGRAPH_TIME
-  else
-    garbageToSend[#garbageToSend + 1] = {
-      width = garbage.width,
-      height = garbage.height,
-      isMetal = garbage.isMetal,
-      isChain = garbage.isChain,
-      timeAttackInteracts = timeAttackInteracts
-    }
-    self.stoppers.combo[garbage.width] = timeAttackInteracts + GARBAGE_TRANSIT_TIME + GARBAGE_TELEGRAPH_TIME
-  end
+  local garbageToSend = {
+    width = garbage.width,
+    height = garbage.height,
+    isMetal = garbage.isMetal,
+    isChain = garbage.isChain,
+    timeAttackInteracts = timeAttackInteracts,
+    releaseTime = timeAttackInteracts + GARBAGE_TRANSIT_TIME + GARBAGE_TELEGRAPH_TIME
+  }
+
   self.garbageQueue:push(garbageToSend)
-  return garbageToSend
+  return {garbageToSend}
 end
 
 function Telegraph:chainingEnded(frameEnded)
@@ -131,14 +114,10 @@ function Telegraph:chainingEnded(frameEnded)
 end
 
 function Telegraph:privateChainingEnded(chainEndTime)
+  logger.debug("finalizing chain at " .. chainEndTime)
 
   self.senderCurrentlyChaining = false
-  local chain = self.garbageQueue.chainGarbage[self.garbageQueue.chainGarbage.last]
-  if chain.timeAttackInteracts >= chainEndTime then
-    logger.error("Finalizing a chain that ended before it was earned.")
-  end
-  logger.debug("finalizing chain at " .. chainEndTime)
-  chain.finalized = chainEndTime
+  self.garbageQueue:finalizeCurrentChain()
 end
 
 function Telegraph.growChain(self, timeAttackInteracts)
@@ -147,98 +126,26 @@ function Telegraph.growChain(self, timeAttackInteracts)
     self.senderCurrentlyChaining = true
     newChain = true
   end
-
-  local result = self.garbageQueue:growChain(timeAttackInteracts, newChain)
-  self.stoppers.chain[self.garbageQueue.chainGarbage.last] = timeAttackInteracts + GARBAGE_TRANSIT_TIME + GARBAGE_TELEGRAPH_TIME
-  return result
+  local releaseTime = timeAttackInteracts + GARBAGE_TRANSIT_TIME + GARBAGE_TELEGRAPH_TIME
+  return self.garbageQueue:growChain(timeAttackInteracts, newChain, releaseTime)
 end
 
 -- Returns all the garbage that is ready to be sent.
---
--- We are recreating specific logic for what garbage is delayed.
---
--- A combo won't delay a chain
--- A chain will delay a combo, combo goes on top
-
--- Metal won't delay a combo
--- Combo delays a metal, metal goes on top
 function Telegraph:popAllReadyGarbage(time)
-  local poppedGarbage = {}
-  local chainStopperCount = 0
-  local comboStopperCount = 0
+  if self.garbageQueue:len() > 0 then
+    local poppedGarbage = {}
+    local garbage = self.garbageQueue:peek()
 
-  -- remove any chain stoppers that expire this frame,
-  for chainIndex, chainReleaseFrame in pairs(self.stoppers.chain) do
-    if chainReleaseFrame <= time then
-      logger.debug("removing a chain stopper at " .. chainReleaseFrame)
-      self.stoppers.chain[chainIndex] = nil
+    while garbage and garbage.releaseTime <= time do
+      poppedGarbage[#poppedGarbage+1] = self.garbageQueue:pop()
+      garbage = self.garbageQueue:peek()
+    end
+
+    if poppedGarbage[1] then
+      return poppedGarbage
     else
-      chainStopperCount = chainStopperCount + 1
+      return nil
     end
-  end
-
-  -- remove any combo stoppers that expire this frame,
-  for comboGarbageWidth, comboReleaseFrame in pairs(self.stoppers.combo) do
-    if comboReleaseFrame <= time then
-      logger.debug("removing a combo stopper at " .. comboReleaseFrame)
-      self.stoppers.combo[comboGarbageWidth] = nil
-    else
-      comboStopperCount = comboStopperCount + 1
-    end
-  end
-
-  -- remove the metal stopper if it expires this frame
-  if self.stoppers.metal and self.stoppers.metal <= time then
-    logger.debug("removing a metal stopper at " .. self.stoppers.metal)
-    self.stoppers.metal = nil
-  end
-
-  while self.garbageQueue.chainGarbage:peek() do
-    -- typically garbage chaining will keep resetting this stopper, preventing anything from being sent
-    if not self.stoppers.chain[self.garbageQueue.chainGarbage.first] and self.garbageQueue.chainGarbage:peek().finalized then
-      logger.debug("committing chain at " .. time)
-      poppedGarbage[#poppedGarbage + 1] = self.garbageQueue:pop()
-    else
-      logger.debug("could be chaining or stopper")
-      -- there was a stopper here or their chain could still be going, stop and return.
-      if poppedGarbage[1] then
-        return poppedGarbage
-      else
-        return nil
-      end
-    end
-  end
-
-  for comboGarbageWidth = 1, 6 do
-    local blockCount = self.garbageQueue.comboGarbage[comboGarbageWidth]:len()
-
-    local frame_to_release = self.stoppers.combo[comboGarbageWidth]
-    if blockCount > 0 then
-      if not frame_to_release then
-        logger.debug("committing combo at " .. time)
-        for i = 1, blockCount do
-          poppedGarbage[#poppedGarbage + 1] = self.garbageQueue:pop()
-        end
-      else
-        -- there was a stopper here, stop and return
-        if poppedGarbage[1] then
-          return poppedGarbage
-        else
-          return nil
-        end
-      end
-    end
-  end
-
-  while self.garbageQueue.metal:peek() and not self.stoppers.metal do
-    logger.debug("committing metal at " .. time)
-    poppedGarbage[#poppedGarbage + 1] = self.garbageQueue:pop()
-  end
-
-  if poppedGarbage[1] then
-    return poppedGarbage
-  else
-    return nil
   end
 end
 
