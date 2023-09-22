@@ -98,23 +98,73 @@ local function clear(panel, clearChaining, clearColor)
   clear_flags(panel, clearChaining)
 end
 
+-- WHY PANEL DOES NOT USE class.lua
+-- every time you assign a value to a table index that was previously nil, lua checks if the table needs to be rehashed
+-- a rehash is the increase of table size due to addition of more fields and rehashes are slow in lua
+-- Lua rehashes whenever the number of fields surpasses a power of 2 (at 2, 4, 8, 16 etc.)
+-- panels are the tables with the shortest lifetime during gameplay
+-- during garbage creation a panel created with class.lua would get rehashed 4 times + one more time upon getting cleared
+-- for chain garbage this may accumulate to hundreds of rehashes on a single frame,
+-- result in a measurable and significant increase in processor time (multiplying processing time for engine on that frame)
+-- by defining all fields of p on table initialization, rehashes can be avoided completely
+-- as class.lua creates an empty table and sets the metatable on it, extra processor time is unavoidable
+-- so only for panels due to performance relevance, class functionality is manually implemented
 
 -- Represents an individual panel in the stack
-Panel =
-class(
-  function(p, id, row, column, frameTimes)
-    local metatable = getmetatable(p)
-    metatable.__tostring = function(panel)
-      return "row:"..panel.row..",col:"..panel.column..",color:"..panel.color..",state:"..panel.state..",timer:"..panel.timer
-    end
-    setmetatable(p, metatable)
-    clear(p, true, true)
-    p.id = id
-    p.row = row
-    p.column = column
-    p.frameTimes = frameTimes
-  end
-)
+-- Panel is the metatable for all panels that get created
+Panel = {
+  -- adding tostring to the metatable makes lua call it automatically when concatenating panels with text (no explicit function call necessary)
+  __tostring = function(panel)
+    return "row:"..panel.row..",col:"..panel.column..",color:"..panel.color..",state:"..panel.state..",timer:"..panel.timer
+  end,
+}
+
+-- this is necessary to make the functions on Panel available
+-- we can only set the recursive reference after Panel was defined, otherwise Panel will be nil on assignment
+Panel.__index = Panel
+
+-- first argument to __call is always the table that was called as a function itself (even if not explicitly passed)
+-- we actually use it in place of Panel because it's a local vs a global access
+local panelMetatable = {__call = function(classTable, id, row, column, frameTimes)
+  local p = {
+    id = id,
+    row = row,
+    column = column,
+    frameTimes = frameTimes,
+    state = "normal",
+    color = 0,
+    timer = 0,
+    combo_index = 0,
+    combo_size = 0,
+    isSwappingFromLeft = false,
+    dont_swap = false,
+    queuedHover = false,
+    chaining = false,
+    fell_from_garbage = 0,
+    stateChanged = false,
+    propagatesChaining = false,
+    matchAnyway = false,
+    initial_time = 0,
+    pop_time = 0,
+    pop_index = 0,
+    x_offset = 0,
+    y_offset = 0,
+    width = 0,
+    height = 0,
+    metal = false,
+    shake_time = 0,
+    isGarbage = false
+  }
+
+  -- this makes it so that our new panel inherits all fields (here only functions) defined on Panel
+  setmetatable(p, classTable)
+
+  return p
+end
+}
+
+-- this makes it so that calling Panel() returns a new panel
+setmetatable(Panel, panelMetatable)
 
 -- for external access
 function Panel:clear(clearChaining, clearColor)
