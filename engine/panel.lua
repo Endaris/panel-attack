@@ -105,9 +105,9 @@ end
 -- panels are the tables with the shortest lifetime during gameplay
 -- during garbage creation a panel created with class.lua would get rehashed 4 times + one more time upon getting cleared
 -- for chain garbage this may accumulate to hundreds of rehashes on a single frame,
--- result in a measurable and significant increase in processor time (multiplying processing time for engine on that frame)
--- by defining all fields of p on table initialization, rehashes can be avoided completely
--- as class.lua creates an empty table and sets the metatable on it, extra processor time is unavoidable
+-- result in a measurable increase in processor time
+-- By defining all fields of p on table initialization, rehashes can be avoided completely
+-- because lua allocates a table with the correct size right from the start
 -- so only for panels due to performance relevance, class functionality is manually implemented
 
 -- Represents an individual panel in the stack
