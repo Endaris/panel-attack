@@ -61,6 +61,7 @@ local Game = class(
     self.previousWindowHeight = 0
     self.sendNetworkQueue = TimeQueue()
     self.receiveNetworkQueue = TimeQueue()
+    self.pendingNetRequests = {}
 
     self.crashTrace = nil -- set to the trace of your thread before throwing an error if you use a coroutine
     
