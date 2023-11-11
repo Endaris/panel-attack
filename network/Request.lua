@@ -67,3 +67,5 @@ function Request:send()
     self.done = true
   end
 end
+
+return Request
