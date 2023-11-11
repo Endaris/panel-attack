@@ -56,6 +56,7 @@ function ClientRequests.requestLogin()
   local request = Request(loginMessage, "login_successful", "login_denied")
   GAME.pendingNetRequests["login"] = request
   request:send()
+  return request
 end
 
 function ClientRequests.logout()

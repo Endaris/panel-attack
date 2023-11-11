@@ -203,7 +203,7 @@ print("lobby2")
 
 print("lobby5")
   if connection_up_time <= self.login_status_message_duration and not GAME.pendingNetRequests["login"] then
-    ClientRequests.requestLogin()
+    ClientRequests.requestLogin():setCallback(self.handleLogin)
   end
 
   self:initLobbyMenu()
@@ -216,58 +216,51 @@ function Lobby:drawBackground()
   self.backgroundImg:draw()
 end
 
-function Lobby:handleLogin()
-  if GAME.pendingNetRequests["login"] then
-    local done, response = GAME.pendingNetRequests["login"]:tryGetResponse()
-
-    if done then
-      GAME.pendingNetRequests["login"] = nil
-      if not response then
-        -- our login request timed out
-        self.login_status_message = loc("lb_login_timeout")
-        self.login_status_message_duration = 7
-        exitMenu()
+function Lobby:handleLogin(response)
+  GAME.pendingNetRequests["login"] = nil
+  if not response then
+    -- our login request timed out
+    self.login_status_message = loc("lb_login_timeout")
+    self.login_status_message_duration = 7
+  else
+    if response.login_successful then
+      current_server_supports_ranking = true
+      logged_in = true
+      if response.new_user_id then
+        my_user_id = response.new_user_id
+        logger.trace("about to write user id file")
+        write_user_id_file()
+        self.login_status_message = loc("lb_user_new", config.name)
+      elseif response.name_changed then
+        self.login_status_message = loc("lb_user_update", response.old_name, response.new_name)
+        self.login_status_message_duration = 5
       else
-        if response.login_successful then
-          current_server_supports_ranking = true
-          logged_in = true
-          if response.new_user_id then
-            my_user_id = response.new_user_id
-            logger.trace("about to write user id file")
-            write_user_id_file()
-            self.login_status_message = loc("lb_user_new", config.name)
-          elseif response.name_changed then
-            self.login_status_message = loc("lb_user_update", response.old_name, response.new_name)
-            self.login_status_message_duration = 5
-          else
-            self.login_status_message = loc("lb_welcome_back", config.name)
-          end
-          if response.server_notice then
-            local serverNotice = response.server_notice:gsub("\\n", "\n")
-            self.serverNoticeLabel = uiUtils.createCenteredLabel(serverNotice)
-    
-            self.stateParams.startTime = love.timer.getTime()
-    
-            self.state = states.SHOW_SERVER_NOTICE
-          end
-        elseif response.login_denied then
-          current_server_supports_ranking = true
-          self.login_denied = true
-          --TODO: create a menu here to let the user choose "continue unranked" or "get a new user_id"
-          --login_status_message = "Login for ranked matches failed.\n"..msg.reason.."\n\nYou may continue unranked,\nor delete your invalid user_id file to have a new one assigned."
-          login_status_message_duration = 10
-          self.state = states.SWITCH_SCENE
-          self.switchSceneLabel = uiUtils.createCenteredLabel(loc("lb_error_msg") .. "\n\n" .. json.encode(response))
-          self.stateParams = {
-            startTime = love.timer.getTime(),
-            maxDisplayTime = 10,
-            minDisplayTime = 1,
-            sceneName = "MainMenu",
-            sceneParams = nil
-          }
-          return
-        end
+        self.login_status_message = loc("lb_welcome_back", config.name)
       end
+      if response.server_notice then
+        local serverNotice = response.server_notice:gsub("\\n", "\n")
+        self.serverNoticeLabel = uiUtils.createCenteredLabel(serverNotice)
+
+        self.stateParams.startTime = love.timer.getTime()
+
+        self.state = states.SHOW_SERVER_NOTICE
+      end
+    elseif response.login_denied then
+      current_server_supports_ranking = true
+      self.login_denied = true
+      --TODO: create a menu here to let the user choose "continue unranked" or "get a new user_id"
+      --login_status_message = "Login for ranked matches failed.\n"..msg.reason.."\n\nYou may continue unranked,\nor delete your invalid user_id file to have a new one assigned."
+      login_status_message_duration = 10
+      self.state = states.SWITCH_SCENE
+      self.switchSceneLabel = uiUtils.createCenteredLabel(loc("lb_error_msg") .. "\n\n" .. json.encode(response))
+      self.stateParams = {
+        startTime = love.timer.getTime(),
+        maxDisplayTime = 10,
+        minDisplayTime = 1,
+        sceneName = "MainMenu",
+        sceneParams = nil
+      }
+      return
     end
   end
 end
