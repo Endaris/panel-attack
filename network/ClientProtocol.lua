@@ -53,7 +53,7 @@ function ClientRequests.requestLogin()
     user_id = my_user_id
   }
 
-  local request = Request(loginMessage, "login_successful", "login_denied")
+  local request = Request(loginMessage, "login_successful", "login_denied", "choose_another_name")
   GAME.pendingNetRequests["login"] = request
   request:send()
   return request

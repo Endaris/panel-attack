@@ -1,7 +1,7 @@
 local class = require("class")
 
 -- how many tries (read: frames) it takes for a request to give up waiting for a response
-local REQUEST_TIMEOUT = 10 * 60
+local REQUEST_TIMEOUT = 5 * 60
 
 -- A  simple coroutine wrapper for requests to the server that allows to get the response from the request itself
 local Request = class(function(self, messageContent, ...)
@@ -19,7 +19,7 @@ end)
 function Request:tryRunCallback()
   assert(self.awaitingResponse and not self.done, "you're not supposed to try and get a response from this")
   self.responseCheckCount = self.responseCheckCount + 1
-  response = server_queue:pop_next_with(unpack(self.expectedMessages))
+  local response = server_queue:pop_next_with(unpack(self.expectedMessages))
 
   if response or self.responseCheckCount > REQUEST_TIMEOUT then
     self.awaitingResponse = false
@@ -32,7 +32,7 @@ end
 -- sends the request, updates awaitingResponse status field
 function Request:send()
   json_send(self.messageContent)
-  if self.callback then
+  if self.expectedMessages and #self.expectedMessages > 0 then
     self.awaitingResponse = true
   else
     self.done = true

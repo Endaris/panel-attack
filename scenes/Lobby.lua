@@ -203,7 +203,7 @@ print("lobby2")
 
 print("lobby5")
   if connection_up_time <= self.login_status_message_duration and not GAME.pendingNetRequests["login"] then
-    ClientRequests.requestLogin():setCallback(self.handleLogin)
+    ClientRequests.requestLogin():setCallback(self.handleLogin, self)
   end
 
   self:initLobbyMenu()
@@ -261,21 +261,7 @@ function Lobby:handleLogin(response)
         sceneParams = nil
       }
       return
-    end
-  end
-end
-
-function Lobby:processServerMessages()
-  if connection_up_time <= self.login_status_message_duration then
-    
-    self:handleLogin()
-  end
-
-  local messages = server_queue:pop_all_with("choose_another_name", "create_room", "unpaired", "game_request", "leaderboard_report", "spectate_request_granted")
-  for _, msg in ipairs(messages) do
-    self.updated = true
-    self.items = {}
-    if msg.choose_another_name and msg.choose_another_name.used_names then
+    elseif response.choose_another_name and response.choose_another_name.used_names then
       self.state = states.SWITCH_SCENE
       self.switchSceneLabel = uiUtils.createCenteredLabel(loc("lb_used_name"))
       self.stateParams = {
@@ -286,9 +272,9 @@ function Lobby:processServerMessages()
         sceneParams = nil
       }
       return
-    elseif msg.choose_another_name and msg.choose_another_name.reason then
+    elseif response.choose_another_name and response.choose_another_name.reason then
       self.state = states.SWITCH_SCENE
-      self.switchSceneLabel = uiUtils.createCenteredLabel("Error: " .. msg.choose_another_name.reason)
+      self.switchSceneLabel = uiUtils.createCenteredLabel("Error: " .. response.choose_another_name.reason)
       self.stateParams = {
         startTime = love.timer.getTime(),
         maxDisplayTime = 5, 
@@ -298,6 +284,15 @@ function Lobby:processServerMessages()
       }
       return
     end
+  end
+end
+
+function Lobby:processServerMessages()
+  local messages = server_queue:pop_all_with("create_room", "unpaired", "game_request", "leaderboard_report", "spectate_request_granted")
+  for _, msg in ipairs(messages) do
+    self.updated = true
+    self.items = {}
+
     if msg.create_room or msg.spectate_request_granted then
       GAME.battleRoom = BattleRoom()
       if msg.spectate_request_granted then
@@ -578,6 +573,9 @@ end
 
 function Lobby:update(dt)
   self.backgroundImg:update(dt)
+  if GAME.pendingNetRequests["login"] then
+    GAME.pendingNetRequests["login"]:tryRunCallback()
+  end
 
   if self.state == states.SWITCH_SCENE then
     local stateDuration = love.timer.getTime() - self.stateParams.startTime
