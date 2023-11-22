@@ -102,6 +102,7 @@ function CharacterSelect:loadStandardButtons()
     outlineColor = {1, 1, 1, 1},
     onClick = function()
       play_optional_sfx(themes[config.theme].sounds.menu_cancel)
+      GAME.battleRoom = nil
       sceneManager:switchToScene("MainMenu")
     end
   })

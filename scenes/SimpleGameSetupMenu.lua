@@ -53,7 +53,6 @@ function SimpleGameSetupMenu:startGame()
     config.endless_level = self.levelSlider.value
   end
   write_conf_file()
-  GAME.battleRoom = BattleRoom(self.gameMode)
   GAME.match = GAME.battleRoom:createMatch()
   current_stage = config.stage
   if current_stage == random_stage_special_value then
@@ -72,10 +71,12 @@ end
 
 local function exitMenu()
   play_optional_sfx(themes[config.theme].sounds.menu_validate)
+  GAME.battleRoom = nil
   sceneManager:switchToScene("MainMenu")
 end
 
 function SimpleGameSetupMenu:load()
+  GAME.battleRoom = BattleRoom(self.gameMode)
   self.speedSlider = Slider({
     min = 1, 
     max = 99, 
