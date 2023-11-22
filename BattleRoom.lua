@@ -35,7 +35,7 @@ end
 
 -- Returns the player with more win count.
 -- TODO handle ties?
-function BattleRoom.winningPlayer(self)
+function BattleRoom:winningPlayer()
   if not GAME.match.P2 then
     return GAME.match.P1
   end
@@ -49,7 +49,7 @@ function BattleRoom.winningPlayer(self)
   return GAME.match.P2
 end
 
-function BattleRoom.getPlayerWinCount(self, playerNumber)
+function BattleRoom:getPlayerWinCount(playerNumber)
  return self.playerWinCounts[playerNumber] + self.modifiedWinCounts[playerNumber]
 end
 
