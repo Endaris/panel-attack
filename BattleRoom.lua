@@ -51,30 +51,3 @@ end
 function BattleRoom.getPlayerWinCount(self, playerNumber)
  return self.playerWinCounts[playerNumber] + self.modifiedWinCounts[playerNumber]
 end
-
-function BattleRoom.matchOutcome(self)
-  
-  local gameResult = GAME.match.P1:gameResult()
-
-  if gameResult == nil then
-    return nil
-  end
-
-  local results = {}
-  if gameResult == 0 then -- draw
-    results["end_text"] = loc("ss_draw")
-    results["outcome_claim"] = 0
-  elseif gameResult == -1 then -- P2 wins
-    results["winSFX"] = GAME.match.P2:pick_win_sfx()
-    results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.playerNames[2])
-    results["outcome_claim"] = GAME.match.P2.player_number
-  elseif gameResult == 1 then -- P1 wins
-    results["winSFX"] = GAME.match.P1:pick_win_sfx()
-    results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.playerNames[1])
-    results["outcome_claim"] = GAME.match.P1.player_number
-  else
-    error("No win result")
-  end
-
-  return results
-end

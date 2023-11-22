@@ -204,13 +204,13 @@ function OnlineVsGame:customRun()
 end
 
 function OnlineVsGame:customGameOverSetup()
-  json_send({game_over = true, outcome = GAME.match.battleRoom:matchOutcome()["outcome_claim"]})
+  json_send({game_over = true, outcome = GAME.match:getOutcome()["outcome_claim"]})
   self.maxDisplayTime = 8
   self.nextScene = "CharacterSelectOnline"
 end
 
 function OnlineVsGame:processGameResults()
-  local matchOutcome = GAME.match.battleRoom:matchOutcome()
+  local matchOutcome = GAME.match:getOutcome()
   if matchOutcome then
     local end_text = matchOutcome["end_text"]
     local winSFX = matchOutcome["winSFX"]

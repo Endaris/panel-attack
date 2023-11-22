@@ -78,7 +78,7 @@ function Match:gameEndedClockTime()
   return result
 end
 
-function Match.matchOutcome(self)
+function Match.getOutcome(self)
   
   local gameResult = self.P1:gameResult()
 
@@ -90,17 +90,13 @@ function Match.matchOutcome(self)
   if gameResult == 0 then -- draw
     results["end_text"] = loc("ss_draw")
     results["outcome_claim"] = 0
-  elseif gameResult == -1 then -- opponent wins
+  elseif gameResult == -1 then -- P2 wins
     results["winSFX"] = self.P2:pick_win_sfx()
     results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.playerNames[2])
-    -- win_counts will get overwritten by the server in net games
-    GAME.battleRoom.playerWinCounts[self.P2.player_number] = GAME.battleRoom.playerWinCounts[self.P2.player_number] + 1
     results["outcome_claim"] = self.P2.player_number
-  elseif self.P2.game_over_clock == self:gameEndedClockTime() then -- client wins
+  elseif gameResult == 1 then -- P1 wins
     results["winSFX"] = self.P1:pick_win_sfx()
     results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.playerNames[1])
-    -- win_counts will get overwritten by the server in net games
-    GAME.battleRoom.playerWinCounts[self.P1.player_number] = GAME.battleRoom.playerWinCounts[self.P1.player_number] + 1
     results["outcome_claim"] = self.P1.player_number
   else
     error("No win result")

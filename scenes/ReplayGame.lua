@@ -90,8 +90,8 @@ function ReplayGame:customGameOverSetup()
   self.nextScene = "ReplayBrowser"
   self.nextSceneParams = nil
 
-  if GAME.match.P2 and GAME.match.battleRoom:matchOutcome() then
-    local matchOutcome = GAME.match.battleRoom:matchOutcome()
+  if GAME.match.P2 and GAME.match:getOutcome() then
+    local matchOutcome = GAME.match:getOutcome()
     self.text = matchOutcome["end_text"]
     self.winner_SFX = matchOutcome["winSFX"]
   else
