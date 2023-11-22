@@ -837,11 +837,6 @@ end
 
 function Stack.toPuzzleInfo(self)
   local puzzleInfo = {}
-  if self.match.battleRoom then
-    puzzleInfo["Player"] = self.match.battleRoom.playerNames[self.which]
-  else
-    puzzleInfo["Player"] = config.name
-  end
   puzzleInfo["Stop"] = self.stop_time
   puzzleInfo["Shake"] = self.shake_time
   puzzleInfo["Pre-Stop"] = self.pre_stop_time
@@ -2332,9 +2327,6 @@ function Stack:getAttackPatternData()
   local data = {}
   data.extraInfo = {}
   data.extraInfo.playerName = "Player"
-  if self.match.battleRoom then
-    data.extraInfo.playerName = self.match.battleRoom.playerNames[self.which]
-  end
   data.extraInfo.gpm = self.analytic:getRoundedGPM(self.clock) or 0
   data.extraInfo.matchLength = " "
   if self.game_stopwatch and tonumber(self.game_stopwatch) then

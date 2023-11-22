@@ -45,8 +45,8 @@ function Replay.createNewReplay(match)
       modeReplay.P2_char = match.P2.character
       modeReplay.P2_cur_wait_time = match.P2.cur_wait_time
 
-      modeReplay.P1_win_count = GAME.match.battleRoom.playerWinCounts[match.P1.player_number]
-      modeReplay.P2_win_count = GAME.match.battleRoom.playerWinCounts[match.P2.player_number]
+      modeReplay.P1_win_count = GAME.battleRoom.playerWinCounts[match.P1.player_number]
+      modeReplay.P2_win_count = GAME.battleRoom.playerWinCounts[match.P2.player_number]
     end
   end
   return result
@@ -117,8 +117,8 @@ function Replay.loadFromFile(replay, wantsCanvas)
       GAME.match.P2:moveForPlayerNumber(2)
 
       if replayDetails.P1_win_count then
-        GAME.match.battleRoom.playerWinCounts[1] = replayDetails.P1_win_count
-        GAME.match.battleRoom.playerWinCounts[2] = replayDetails.P2_win_count
+        GAME.battleRoom.playerWinCounts[1] = replayDetails.P1_win_count
+        GAME.battleRoom.playerWinCounts[2] = replayDetails.P2_win_count
       end
     else
       GAME.match.P1:setGarbageTarget(GAME.match.P1)
