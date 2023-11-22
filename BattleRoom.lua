@@ -51,3 +51,8 @@ end
 function BattleRoom.getPlayerWinCount(self, playerNumber)
  return self.playerWinCounts[playerNumber] + self.modifiedWinCounts[playerNumber]
 end
+
+function BattleRoom:createMatch()
+  self.match = Match(self.mode, self)
+  return self.match
+end

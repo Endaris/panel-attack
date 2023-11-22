@@ -83,15 +83,16 @@ function Replay.loadFromFile(replay, wantsCanvas)
   assert(replay ~= nil)
   local replayDetails
   if replay.vs then
-    GAME.battleRoom = BattleRoom()
-    GAME.match = Match("vs", GAME.battleRoom)
+    GAME.battleRoom = BattleRoom("vs")
+    GAME.match = GAME.battleRoom:createMatch()
     replayDetails = replay.vs
   elseif replay.endless or replay.time then
     if replay.time then
-      GAME.match = Match("time")
+      GAME.battleRoom = BattleRoom("time")
     else
-      GAME.match = Match("endless")
+      GAME.battleRoom = BattleRoom("endless")
     end
+    GAME.match = GAME.battleRoom:createMatch()
     replayDetails = replay.endless or replay.time
   end
 

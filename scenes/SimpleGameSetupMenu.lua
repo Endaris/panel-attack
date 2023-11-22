@@ -53,7 +53,8 @@ function SimpleGameSetupMenu:startGame()
     config.endless_level = self.levelSlider.value
   end
   write_conf_file()
-  GAME.match = Match(self.gameMode)
+  GAME.battleRoom = BattleRoom(self.gameMode)
+  GAME.match = GAME.battleRoom:createMatch()
   current_stage = config.stage
   if current_stage == random_stage_special_value then
     current_stage = nil

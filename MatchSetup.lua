@@ -299,9 +299,9 @@ function MatchSetup:startMatch(stageId, seed, replayOfMatch)
   -- end
 
   if not GAME.battleRoom then
-    GAME.battleRoom = BattleRoom()
+    GAME.battleRoom = BattleRoom(self.mode.matchMode)
   end
-  GAME.match = Match(self.mode.matchMode or "vs", GAME.battleRoom)
+  GAME.match = GAME.battleRoom:createMatch()
 
   self:setMatchStage(stageId)
   self:setSeed(seed)
