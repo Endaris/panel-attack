@@ -1,22 +1,20 @@
 
 local logger = require("logger")
+local Player = require("Player")
 
 -- A Battle Room is a session of vs battles, keeping track of the room number, wins / losses etc
 BattleRoom =
   class(
   function(self, mode)
     assert(mode)
-    self.playerWinCounts = {}
-    self.modifiedWinCounts = {}
-    self.playerWinCounts[1] = 0
-    self.playerWinCounts[2] = 0
-    self.modifiedWinCounts[1] = 0
-    self.modifiedWinCounts[2] = 0
-    self.mode = mode
-    self.playerNames = {} -- table with player which number -> display name
-    self.playerNames[1] = config.name or loc("player_n", "1")
-    self.playerNames[2] = loc("player_n", "2")
+
+    self.players = {}
+    -- todo: initialize players from game mode instead
+    self.players[1] = Player(loc("player_n", "1"))
+    self.players[2] = Player(loc("player_n", "2"))
+    self.spectators = {}
     self.spectating = false
+    self.mode = mode
     self.trainingModeSettings = nil
   end
 )
