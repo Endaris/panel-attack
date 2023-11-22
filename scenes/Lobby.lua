@@ -295,7 +295,7 @@ function Lobby:processServerMessages()
       return
     end
     if msg.create_room or msg.spectate_request_granted then
-      GAME.battleRoom = BattleRoom()
+      GAME.battleRoom = BattleRoom("vs")
       if msg.spectate_request_granted then
         if not self.requestedSpectateRoom then
           error("expected requested room")

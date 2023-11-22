@@ -15,7 +15,8 @@ local OnePlayerVsSelf = {
   selectFile = FileSelection.NONE,
   selectColorRandomization = false,
   stackInteraction = StackInteraction.SELF,
-  scene = "VsSelfGame"
+  scene = "VsSelfGame",
+  matchMode = "vs"
 }
 
 local OnePlayerTimeAttack = {

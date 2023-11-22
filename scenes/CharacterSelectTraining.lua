@@ -18,7 +18,7 @@ CharacterSelectTraining.name = "CharacterSelectTraining"
 sceneManager:addScene(CharacterSelectTraining)
 
 function CharacterSelectTraining:customLoad(sceneParams)
-  GAME.battleRoom = BattleRoom()
+  GAME.battleRoom = BattleRoom("vs")
   if sceneParams.trainingModeSettings then
     GAME.battleRoom.trainingModeSettings = sceneParams.trainingModeSettings
   end

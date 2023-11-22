@@ -5,6 +5,7 @@ local logger = require("logger")
 BattleRoom =
   class(
   function(self, mode)
+    assert(mode)
     self.playerWinCounts = {}
     self.modifiedWinCounts = {}
     self.playerWinCounts[1] = 0
