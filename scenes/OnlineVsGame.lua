@@ -4,6 +4,7 @@ local input = require("inputManager")
 local class = require("class")
 local Replay = require("replay")
 local logger = require("logger")
+local GameModes = require("GameModes")
 
 --@module puzzleGame
 -- Scene for a puzzle mode instance of the game
@@ -42,7 +43,7 @@ function OnlineVsGame:customLoad(sceneParams)
   --current_stage = msg.stage
   --CharacterLoader.wait()
   --StageLoader.wait()
-  GAME.match = Match("vs", GAME.battleRoom)
+  GAME.match = GAME.battleRoom:createMatch()
   GAME.match.supportsPause = false
   local msg = sceneParams.msg
   GAME.match.seed = self:getSeed(msg)

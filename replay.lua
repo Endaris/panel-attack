@@ -1,5 +1,6 @@
 local utf8 = require("utf8Additions")
 local logger = require("logger")
+local GameModes = require("GameModes")
 
 -- A replay is a particular recording of a play of the game. Temporarily this is just helper methods.
 Replay =
@@ -83,14 +84,18 @@ function Replay.loadFromFile(replay, wantsCanvas)
   assert(replay ~= nil)
   local replayDetails
   if replay.vs then
-    GAME.battleRoom = BattleRoom("vs")
+    if replay.vs.I and utf8.len(replay.vs.I) > 0 then
+      GAME.battleRoom = BattleRoom(GameModes.TWO_PLAYER_VS)
+    else
+      GAME.battleRoom = BattleRoom(GameModes.ONE_PLAYER_VS_SELF)
+    end
     GAME.match = GAME.battleRoom:createMatch()
     replayDetails = replay.vs
   elseif replay.endless or replay.time then
     if replay.time then
-      GAME.battleRoom = BattleRoom("time")
+      GAME.battleRoom = BattleRoom(GameModes.ONE_PLAYER_TIME_ATTACK)
     else
-      GAME.battleRoom = BattleRoom("endless")
+      GAME.battleRoom = BattleRoom(GameModes.ONE_PLAYER_ENDLESS)
     end
     GAME.match = GAME.battleRoom:createMatch()
     replayDetails = replay.endless or replay.time
