@@ -6,6 +6,7 @@ local ReplayV2 = require("replayV2")
 local Player = require("Player")
 
 local REPLAY_VERSION = 2
+local tableUtils = require("tableUtils")
 
 -- A replay is a particular recording of a play of the game. Temporarily this is just helper methods.
 Replay =
