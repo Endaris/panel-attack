@@ -80,8 +80,7 @@ function Replay.loadFromPath(path)
     return true
 end
 
-function Replay.loadFromFile(replay, wantsCanvas)
-  assert(replay ~= nil)
+function Replay.loadFromFileV1(replay, wantsCanvas)
   local replayDetails
   if replay.vs then
     if replay.vs.I and utf8.len(replay.vs.I) > 0 then
@@ -167,6 +166,19 @@ function Replay.loadFromFile(replay, wantsCanvas)
 
   if GAME.match.P2 then
     GAME.match.P2:starting_state()
+  end
+end
+
+function Replay.loadFromFileV2(replay, wantsCanvas)
+
+end
+
+function Replay.loadFromFile(replay, wantsCanvas)
+  assert(replay ~= nil)
+  if not replay.replayVersion then
+    Replay.loadFromFileV1(replay, wantsCanvas)
+  else
+    Replay.loadFromFileV2(replay, wantsCanvas)
   end
 end
 

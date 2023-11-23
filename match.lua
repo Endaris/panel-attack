@@ -92,11 +92,11 @@ function Match.getOutcome(self)
     results["outcome_claim"] = 0
   elseif gameResult == -1 then -- P2 wins
     results["winSFX"] = self.P2:pick_win_sfx()
-    results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.playerNames[2])
+    results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.players[2].name)
     results["outcome_claim"] = self.P2.player_number
   elseif gameResult == 1 then -- P1 wins
     results["winSFX"] = self.P1:pick_win_sfx()
-    results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.playerNames[1])
+    results["end_text"] =  loc("ss_p_wins", GAME.battleRoom.players[1].name)
     results["outcome_claim"] = self.P1.player_number
   else
     error("No win result")

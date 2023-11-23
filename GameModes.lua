@@ -3,6 +3,7 @@ local GameModes = {}
 local Styles = { CHOOSE = 0, CLASSIC = 1, MODERN = 2}
 local FileSelection = { NONE = 0, TRAINING = 1, PUZZLE = 2}
 local StackInteraction = { NONE = 0, VERSUS = 1, SELF = 2, ATTACK_ENGINE = 3, HEALTH_ENGINE = 4}
+local WinCondition = { NONE = 0, GAME_OVER = 1, SCORE = 2, TIME = 3}
 
 local OnePlayerVsSelf = {
   playerCount = 1,
@@ -19,7 +20,8 @@ local OnePlayerVsSelf = {
   hasShock = true,
   richPresenceLabel = loc("mm_1_vs"),
   -- temporary crutch until all checks for this are eliminated
-  matchMode = "vs"
+  matchMode = "vs",
+  winCondition = WinCondition.NONE
 }
 
 local OnePlayerTimeAttack = {
@@ -36,7 +38,8 @@ local OnePlayerTimeAttack = {
   scene = "TimeAttackGame",
   hasShock = false,
   richPresenceLabel = loc("mm_1_time"),
-  matchMode = "time"
+  matchMode = "time",
+  winCondition = WinCondition.NONE
 }
 
 local OnePlayerEndless = {
@@ -53,7 +56,8 @@ local OnePlayerEndless = {
   scene = "EndlessGame",
   hasShock = false,
   richPresenceLabel = loc("mm_1_endless"),
-  matchMode = "endless"
+  matchMode = "endless",
+  winCondition = WinCondition.NONE
 }
 
 local OnePlayerTraining = {
@@ -69,7 +73,8 @@ local OnePlayerTraining = {
   stackInteraction = StackInteraction.ATTACK_ENGINE,
   scene = "GameBase",
   hasShock = true,
-  richPresenceLabel = loc("mm_1_training")
+  richPresenceLabel = loc("mm_1_training"),
+  winCondition = WinCondition.NONE
 }
 
 local OnePlayerPuzzle = {
@@ -86,7 +91,8 @@ local OnePlayerPuzzle = {
   scene = "PuzzleGame",
   matchMode = "puzzle",
   hasShock = false,
-  richPresenceLabel = loc("mm_1_puzzle")
+  richPresenceLabel = loc("mm_1_puzzle"),
+  winCondition = WinCondition.NONE
 }
 
 local OnePlayerChallenge = {
@@ -102,7 +108,8 @@ local OnePlayerChallenge = {
   stackInteraction = StackInteraction.HEALTH_ENGINE,
   scene = "GameBase",
   hasShock = true,
-  richPresenceLabel = loc("mm_1_challenge_mode")
+  richPresenceLabel = loc("mm_1_challenge_mode"),
+  winCondition = WinCondition.GAME_OVER
 }
 
 local TwoPlayerVersus = {
@@ -119,12 +126,14 @@ local TwoPlayerVersus = {
   stackInteraction = StackInteraction.VERSUS,
   scene = "OnlineVsGame",
   hasShock = true,
-  richPresenceLabel = loc("mm_2_vs")
+  richPresenceLabel = loc("mm_2_vs"),
+  winCondition = WinCondition.GAME_OVER
 }
 
 GameModes.Styles = Styles
 GameModes.FileSelection = FileSelection
 GameModes.StackInteraction = StackInteraction
+GameModes.WinCondition = WinCondition
 
 GameModes.ONE_PLAYER_VS_SELF = OnePlayerVsSelf
 GameModes.ONE_PLAYER_TIME_ATTACK = OnePlayerTimeAttack
