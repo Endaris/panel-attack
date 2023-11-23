@@ -1055,7 +1055,7 @@ function Stack:drawWinCount()
   end
 
   self:drawLabel(self.theme.images.IMG_wins, self.theme.winLabel_Pos, self.theme.winLabel_Scale, true)
-  self:drawNumber(self.match.battleRoom:getPlayerWinCount(self.player_number), self.wins_quads, self.theme.win_Pos, self.theme.win_Scale, true)
+  self:drawNumber(self.match.battleRoom.players[self.player_number].getWinCount(), self.wins_quads, self.theme.win_Pos, self.theme.win_Scale, true)
 end
 
 function Stack:drawRating()

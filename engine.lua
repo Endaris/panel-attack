@@ -1584,7 +1584,7 @@ function Stack.simulate(self)
       else
         local winningPlayer = self
         if GAME.battleRoom then
-          winningPlayer = GAME.battleRoom:winningPlayer(GAME.match.P1, GAME.match.P2)
+          winningPlayer = GAME.battleRoom:winningPlayer(GAME.match.P1, GAME.match.P2).stack
         end
 
         local musics_to_use = nil
