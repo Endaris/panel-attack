@@ -7,6 +7,7 @@ local tableUtils = require("tableUtils")
 local util = require("util")
 local utf8 = require("utf8")
 local GraphicsUtil = require("graphics_util")
+local GameModes = require("GameModes")
 require("engine.panel")
 
 -- Stuff defined in this file:
@@ -249,8 +250,8 @@ Stack =
     s.opponentStack = nil -- the other stack you are playing against
     s.garbageTarget = nil -- the target you are sending attacks to
 
-    if s.match.mode == "vs" then
-      s.telegraph = Telegraph(s) 
+    if s.match.mode.stackInteraction ~= GameModes.StackInteraction.NONE then
+      s.telegraph = Telegraph(s)
       -- Telegraph holds the garbage that hasn't been committed yet and also tracks the attack animations
       -- NOTE: this is the telegraph our stack is adding into that is shown over the other player
       -- .sender = us
@@ -1689,7 +1690,8 @@ function Stack.simulate(self)
         SFX_Swap_Play = 0
       end
       if SFX_Cur_Move_Play == 1 then
-        if not (self.match.mode == "vs" and self.theme.sounds.swap:isPlaying()) and not self.do_countdown then
+        -- I have no idea why this makes a distinction for vs, like what?
+        if not (self.match.mode.matchMode == "vs" and self.theme.sounds.swap:isPlaying()) and not self.do_countdown then
           self.theme.sounds.cur_move:stop()
           self.theme.sounds.cur_move:play()
         end
@@ -1939,34 +1941,33 @@ end
 -- Returns true if the stack is simulated past the end of the match.
 function Stack.game_ended(self)
 
+  if self.match.mode == GameModes.ONE_PLAYER_PUZZLE then
+    if self:puzzle_done() or self:puzzle_failed() then
+      return true
+    else
+      return false
+    end
+  end
+
   local gameEndedClockTime = self.match:gameEndedClockTime()
 
-  if self.match.mode == "vs" then
+  if self.match.mode.StackInteraction == GameModes.StackInteraction.HEALTH_ENGINE then
     if self.match.simulatedOpponent and self.match.simulatedOpponent:isDefeated() then
       return true
     end
-
-    -- Note we use "greater" and not "greater than or equal" because our stack may be currently processing this clock frame.
-    -- At the end of the clock frame it will be incremented and we know we have process the game over clock frame.
-    if gameEndedClockTime > 0 and self.clock > gameEndedClockTime then
-      return true
-    end
-  elseif self.match.mode == "time" then
-    if gameEndedClockTime > 0 and self.clock > gameEndedClockTime then
-      return true
-    elseif self.game_stopwatch then
+  elseif self.match.mode == GameModes.ONE_PLAYER_TIME_ATTACK then
+    if self.game_stopwatch then
       if self.game_stopwatch > TIME_ATTACK_TIME * 60 then
         return true
       end
     end
-  elseif self.match.mode == "endless" then
-    if gameEndedClockTime > 0 and self.clock > gameEndedClockTime then
-      return true
-    end
-  elseif self.match.mode == "puzzle" then
-    if self:puzzle_done() or self:puzzle_failed() then
-      return true
-    end
+  end
+
+  -- The universal game end condition for everything but puzzles, one of the stacks went game over
+  -- Note we use "greater" and not "greater than or equal" because our stack may be currently processing this clock frame.
+  -- At the end of the clock frame it will be incremented and we know we have process the game over clock frame.
+  if gameEndedClockTime > 0 and self.clock > gameEndedClockTime then
+    return true
   end
 
   return false
@@ -1980,16 +1981,19 @@ function Stack.gameResult(self)
 
   local gameEndedClockTime = self.match:gameEndedClockTime()
 
-  if self.match.mode == "vs" then
-    if self.opponentStack == nil then
-      if self.match.simulatedOpponent then
-        if self.match.simulatedOpponent:isDefeated() then
-          return 1
-        end
-      end
-      return -1
-    -- We can't call it until someone has lost and everyone has played up to that point in time.
-    elseif self.opponentStack:game_ended() then
+  if self.match.mode.stackInteraction == GameModes.StackInteraction.HEALTH_ENGINE then
+    if self.match.simulatedOpponent and self.match.simulatedOpponent:isDefeated() then
+      return 1
+    end
+  end
+
+  if self.match.mode.stackInteraction == GameModes.StackInteraction.SELF then
+    -- can't win against yourself :-(
+    return -1
+  end
+
+  if self.match.mode.stackInteraction == GameModes.StackInteraction.VERSUS then
+    if self.opponentStack:game_ended() then
       if self.game_over_clock == gameEndedClockTime and self.opponentStack.game_over_clock == gameEndedClockTime then
         return 0
       elseif self.game_over_clock == gameEndedClockTime then
@@ -1998,19 +2002,26 @@ function Stack.gameResult(self)
         return 1
       end
     end
-  elseif self.match.mode == "time" then
+  end
+
+  if self.match.mode == GameModes.ONE_PLAYER_TIME_ATTACK then
     if gameEndedClockTime > 0 and self.clock > gameEndedClockTime then
       return -1
     elseif self.game_stopwatch then
       if self.game_stopwatch > TIME_ATTACK_TIME * 60 then
+        -- we didn't die within the time limit so that's a win I guess?
         return 1
       end
     end
-  elseif self.match.mode == "endless" then
+  end
+
+  if self.match.mode == GameModes.ONE_PLAYER_ENDLESS then
     if gameEndedClockTime > 0 and self.clock > gameEndedClockTime then
       return -1
     end
-  elseif self.match.mode == "puzzle" then
+  end
+
+  if self.match.mode == GameModes.ONE_PLAYER_PUZZLE then
     if self:puzzle_done() then
       return 1
     elseif self:puzzle_failed() then
@@ -2420,7 +2431,7 @@ function Stack.onPop(self, panel)
     self.score = self.score + 10
 
     self.panels_cleared = self.panels_cleared + 1
-    if self.match.mode == "vs" and self.panels_cleared % level_to_metal_panel_frequency[self.level] == 0 then
+    if self.match.mode.hasShock and self.panels_cleared % level_to_metal_panel_frequency[self.level] == 0 then
       self.metal_panels_queued = min(self.metal_panels_queued + 1, level_to_metal_panel_cap[self.level])
     end
     if self:shouldChangeSoundEffects() then

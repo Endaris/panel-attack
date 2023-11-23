@@ -1,16 +1,16 @@
 local logger = require("logger")
 local tableUtils = require("tableUtils")
+local GameModes = require("GameModes")
 
 -- A match is a particular instance of the game, for example 1 time attack round, or 1 vs match
 Match =
   class(
-  function(self, mode, battleRoom)
+  function(self, battleRoom)
     self.players = {}
     self.P1 = nil
     self.P2 = nil
     self.engineVersion = VERSION
-    self.mode = mode
-    assert(mode ~= "vs" or battleRoom)
+    assert(battleRoom)
     self.battleRoom = battleRoom
     GAME.droppedFrames = 0
     self.timeSpentRunning = 0
@@ -21,14 +21,14 @@ Match =
     self.seed = math.random(1,9999999)
     self.isFromReplay = false
     self.startTimestamp = os.time(os.date("*t"))
-    if (P2 or mode == "vs") and GAME.battleRoom then
+    if (P2 or battleRoom.mode.stackInteraction == GameModes.stackInteraction.VERSUS) then
       GAME.rich_presence:setPresence(
-      (GAME.battleRoom.spectating and "Spectating" or "Playing") .. " a " .. match_type .. " match",
-      GAME.battleRoom.playerNames[1] .. " vs " .. (GAME.battleRoom.playerNames[2] or "themselves"),
+      (battleRoom.spectating and "Spectating" or "Playing") .. " a " .. battleRoom.mode.richPresenceLabel .. " match",
+      battleRoom.players[1].name .. " vs " .. (battleRoom.players[2].name),
       true)
     else
       GAME.rich_presence:setPresence(
-      "Playing " .. mode .. " mode",
+      "Playing " .. battleRoom.mode.richPresenceLabel .. " mode",
       nil,
       true)
     end

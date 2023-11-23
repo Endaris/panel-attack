@@ -16,6 +16,9 @@ local OnePlayerVsSelf = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.SELF,
   scene = "VsSelfGame",
+  hasShock = true,
+  richPresenceLabel = loc("mm_1_vs"),
+  -- temporary crutch until all checks for this are eliminated
   matchMode = "vs"
 }
 
@@ -31,6 +34,8 @@ local OnePlayerTimeAttack = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.NONE,
   scene = "TimeAttackGame",
+  hasShock = false,
+  richPresenceLabel = loc("mm_1_time"),
   matchMode = "time"
 }
 
@@ -46,6 +51,8 @@ local OnePlayerEndless = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.NONE,
   scene = "EndlessGame",
+  hasShock = false,
+  richPresenceLabel = loc("mm_1_endless"),
   matchMode = "endless"
 }
 
@@ -60,7 +67,9 @@ local OnePlayerTraining = {
   selectFile = FileSelection.TRAINING,
   selectColorRandomization = false,
   stackInteraction = StackInteraction.ATTACK_ENGINE,
-  scene = "GameBase"
+  scene = "GameBase",
+  hasShock = true,
+  richPresenceLabel = loc("mm_1_training")
 }
 
 local OnePlayerPuzzle = {
@@ -75,7 +84,9 @@ local OnePlayerPuzzle = {
   selectColorRandomization = true,
   stackInteraction = StackInteraction.NONE,
   scene = "PuzzleGame",
-  matchMode = "puzzle"
+  matchMode = "puzzle",
+  hasShock = false,
+  richPresenceLabel = loc("mm_1_puzzle")
 }
 
 local OnePlayerChallenge = {
@@ -89,7 +100,9 @@ local OnePlayerChallenge = {
   selectFile = FileSelection.NONE,
   selectColorRandomization = false,
   stackInteraction = StackInteraction.HEALTH_ENGINE,
-  scene = "GameBase"
+  scene = "GameBase",
+  hasShock = true,
+  richPresenceLabel = loc("mm_1_challenge_mode")
 }
 
 local TwoPlayerVersus = {
@@ -104,7 +117,9 @@ local TwoPlayerVersus = {
   selectFile = FileSelection.NONE,
   selectColorRandomization = false,
   stackInteraction = StackInteraction.VERSUS,
-  scene = "OnlineVsGame"
+  scene = "OnlineVsGame",
+  hasShock = true,
+  richPresenceLabel = loc("mm_2_vs")
 }
 
 GameModes.Styles = Styles

@@ -9,7 +9,7 @@ class(
   )
 
 function Replay.createNewReplay(match)
-  local mode = match.mode
+  local mode = match.battleRoom.mode
   local result = {}
   result.engineVersion = VERSION
 
