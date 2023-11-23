@@ -284,7 +284,7 @@ function select_screen.getTemplateMap(self)
   logger.trace("current_server_supports_ranking: " .. tostring(current_server_supports_ranking))
   if self:isNetPlay() and current_server_supports_ranking then
     return {
-      {"__Panels", "__Panels", "__Mode", "__Mode", "__Stage", "__Stage", "__Level", "__Level", "__Ready"},
+      {"__Panels", "__Panels", "__Mode", "__Mode", "__Stage", "__Stage", "__Ready", "__Ready", "__Ready"},
       {"__Random", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty"},
       {"__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty"},
       {"__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty"},
@@ -302,7 +302,7 @@ function select_screen.getTemplateMap(self)
       }
     else
       return {
-        {"__Panels", "__Panels", "__Stage", "__Stage", "__Stage", "__Level", "__Level", "__Level", "__Ready"},
+        {"__Panels", "__Panels", "__Stage", "__Stage", "__Stage", "__Ready", "__Ready", "__Ready", "__Ready"},
         {"__Random", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty"},
         {"__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty"},
         {"__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty", "__Empty"},
@@ -866,9 +866,9 @@ end
 -- returns transition to local vs screen
 function select_screen.start2pLocalMatch(self)
   GAME.match = Match("vs", GAME.battleRoom)
-  P1 = Stack{which = 1, match = GAME.match, is_local = true, panels_dir = self.players[self.my_player_number].panels_dir, level = self.players[self.my_player_number].level, levelData = levelPresets.getModern(self.players[self.my_player_number].level), inputMethod = config.inputMethod, character = self.players[self.my_player_number].character, player_number = 1}
+  P1 = Stack{which = 1, match = GAME.match, is_local = true, panels_dir = self.players[self.my_player_number].panels_dir, level = self.players[self.my_player_number].level, levelData = GLOBAL_levelData, inputMethod = config.inputMethod, character = self.players[self.my_player_number].character, player_number = 1}
   GAME.match:addPlayer(P1)
-  P2 = Stack{which = 2, match = GAME.match, is_local = true, panels_dir = self.players[self.op_player_number].panels_dir, level = self.players[self.op_player_number].level, levelData = levelPresets.getModern(self.players[self.op_player_number].level),inputMethod = "controller", character = self.players[self.op_player_number].character, player_number = 2}
+  P2 = Stack{which = 2, match = GAME.match, is_local = true, panels_dir = self.players[self.op_player_number].panels_dir, level = self.players[self.op_player_number].level, levelData = GLOBAL_levelData, inputMethod = "controller", character = self.players[self.op_player_number].character, player_number = 2}
   --note: local P2 not currently allowed to use "touch" input method
   GAME.match:addPlayer(P2)
   P1:setOpponent(P2)
@@ -896,7 +896,7 @@ function select_screen.start1pLocalMatch(self)
     challengeStage = challengeMode.stages[challengeMode.currentStageIndex]
     stackLevel = challengeStage.riseDifficulty
   end
-  P1 = Stack{which = 1, match = GAME.match, is_local = true, panels_dir = self.players[self.my_player_number].panels_dir, level = stackLevel, levelData = levelPresets.getModern(stackLevel), inputMethod = self.players[self.my_player_number].inputMethod, character = self.players[self.my_player_number].character, player_number = 1}
+  P1 = Stack{which = 1, match = GAME.match, is_local = true, panels_dir = self.players[self.my_player_number].panels_dir, level = stackLevel, levelData = GLOBAL_levelData, inputMethod = self.players[self.my_player_number].inputMethod, character = self.players[self.my_player_number].character, player_number = 1}
 
   if GAME.battleRoom.trainingModeSettings then
     local character = P1.character

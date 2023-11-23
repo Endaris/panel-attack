@@ -9,6 +9,7 @@ local analytics = require("analytics")
 local main_config_input = require("config_inputs")
 local Replay = require("replay")
 local levelPresets = require("LevelPresets")
+GLOBAL_levelData = nil
 
 local wait, resume = coroutine.yield, coroutine.resume
 
@@ -199,13 +200,14 @@ do
 
     match_type_message = ""
     local items = {
+      {"Set Level Data", levelTestSetup},
       {loc("mm_1_endless"), main_endless_select},
       {loc("mm_1_puzzle"), main_select_puzz},
       {loc("mm_1_time"), main_timeattack_select},
       {loc("mm_1_vs"), main_local_vs_yourself_setup},
       {loc("mm_1_training"), training_setup},
       {loc("mm_1_challenge_mode"), challenge_mode_setup},
-      {loc("mm_2_vs_online", ""), main_net_vs_setup, {consts.SERVER_LOCATION}},
+      --{loc("mm_2_vs_online", ""), main_net_vs_setup, {consts.SERVER_LOCATION}},
       {loc("mm_2_vs_local"), main_local_vs_setup},
       {loc("mm_replay_browser"), replay_browser.main},
       {loc("mm_configure"), main_config_input},
@@ -409,7 +411,7 @@ local function main_endless_time_setup(mode, speed, difficulty, level)
 
   local levelData
   if level then
-    levelData = levelPresets.getModern(level)
+    levelData = GLOBAL_levelData
   else
     levelData = levelPresets.getClassic(difficulty)
     levelData.startingSpeed = speed
@@ -659,6 +661,251 @@ function challenge_mode_setup()
 
     if ret then
       challengeModeMenu:remove_self()
+      return unpack(ret)
+    end
+  end
+end
+
+function levelTestSetup()
+  local ret = nil
+  local menu_x, menu_y = unpack(themes[config.theme].main_menu_screen_pos)
+  local levelEditMenu = Click_menu(menu_x, menu_y, nil, themes[config.theme].main_menu_max_height, 1)
+  local level = 10
+
+  if not GLOBAL_levelData then
+    GLOBAL_levelData = levelPresets.getModern(10)
+  end
+
+  local function updateFrameData()
+    levelEditMenu:set_button_setting(2, GLOBAL_levelData.startingSpeed)
+    levelEditMenu:set_button_setting(3, GLOBAL_levelData.speedIncreaseMode)
+    levelEditMenu:set_button_setting(4, GLOBAL_levelData.shockFrequency)
+    levelEditMenu:set_button_setting(5, GLOBAL_levelData.shockCap)
+    levelEditMenu:set_button_setting(6, GLOBAL_levelData.colors)
+    levelEditMenu:set_button_setting(7, GLOBAL_levelData.maxHealth)
+    levelEditMenu:set_button_setting(8, GLOBAL_levelData.stop.formula)
+    levelEditMenu:set_button_setting(9, GLOBAL_levelData.stop.comboConstant)
+    levelEditMenu:set_button_setting(10, GLOBAL_levelData.stop.chainConstant)
+    levelEditMenu:set_button_setting(11, GLOBAL_levelData.stop.dangerConstant)
+    levelEditMenu:set_button_setting(12, GLOBAL_levelData.stop.coefficient)
+    levelEditMenu:set_button_setting(13, GLOBAL_levelData.frameConstants.HOVER)
+    levelEditMenu:set_button_setting(14, GLOBAL_levelData.frameConstants.GARBAGE_HOVER)
+    levelEditMenu:set_button_setting(15, GLOBAL_levelData.frameConstants.FLASH)
+    levelEditMenu:set_button_setting(16, GLOBAL_levelData.frameConstants.FACE)
+    levelEditMenu:set_button_setting(17, GLOBAL_levelData.frameConstants.POP)
+  end
+
+  local function loadLevel()
+    GLOBAL_levelData = levelPresets.getModern(level)
+    updateFrameData()
+  end
+
+  local function goEscape()
+    levelEditMenu:set_active_idx(#levelEditMenu.buttons)
+  end
+
+  local function nextMenu()
+    levelEditMenu:selectNextIndex()
+  end
+
+  local function exitSettings()
+    ret = {main_select_mode}
+  end
+
+  local function decreaseLevel()
+    level = bound(1, level - 1, 11)
+    levelEditMenu:set_button_setting(1, level)
+    loadLevel()
+  end
+
+  local function increaseLevel()
+    level = bound(1, level + 1, 11)
+    levelEditMenu:set_button_setting(1, level)
+    loadLevel()
+  end
+
+  local function decreaseSpeed()
+    GLOBAL_levelData.startingSpeed = bound(1, GLOBAL_levelData.startingSpeed - 1, 99)
+    updateFrameData()
+  end
+
+  local function increaseSpeed()
+    GLOBAL_levelData.startingSpeed = bound(1, GLOBAL_levelData.startingSpeed + 1, 99)
+    updateFrameData()
+  end
+
+  local function toggleSpeedIncreaseMode()
+    GLOBAL_levelData.speedIncreaseMode = wrap(1, GLOBAL_levelData.speedIncreaseMode + 1, 2)
+    updateFrameData()
+  end
+
+  local function toggleStopFormula()
+    GLOBAL_levelData.stop.formula = wrap(1, GLOBAL_levelData.stop.formula + 1, 2)
+    updateFrameData()
+  end
+
+  local function decreaseShockFrequency()
+    GLOBAL_levelData.shockFrequency = bound(1, GLOBAL_levelData.shockFrequency - 1, 99)
+    updateFrameData()
+  end
+
+  local function increaseShockFrequency()
+    GLOBAL_levelData.shockFrequency = bound(0, GLOBAL_levelData.shockFrequency + 1, 99)
+    updateFrameData()
+  end
+
+  local function decreaseShockCap()
+    GLOBAL_levelData.shockCap = bound(1, GLOBAL_levelData.shockCap - 1, 99)
+    updateFrameData()
+  end
+
+  local function increaseShockCap()
+    GLOBAL_levelData.shockCap = bound(1, GLOBAL_levelData.shockCap + 1, 99)
+    updateFrameData()
+  end
+
+  local function decreaseColors()
+    GLOBAL_levelData.colors = bound(3, GLOBAL_levelData.colors - 1, 7)
+    updateFrameData()
+  end
+
+  local function increaseColors()
+    GLOBAL_levelData.colors = bound(3, GLOBAL_levelData.colors + 1, 7)
+    updateFrameData()
+  end
+
+  local function decreaseMaxHealth()
+    GLOBAL_levelData.maxHealth = bound(1, GLOBAL_levelData.maxHealth - 1, 241)
+    updateFrameData()
+  end
+
+  local function increaseMaxHealth()
+    GLOBAL_levelData.maxHealth = bound(1, GLOBAL_levelData.maxHealth + 1, 241)
+    updateFrameData()
+  end
+
+  local function decreaseComboConstant()
+    GLOBAL_levelData.stop.comboConstant = bound(1, GLOBAL_levelData.stop.comboConstant - 1, 501)
+    updateFrameData()
+  end
+
+  local function increaseComboConstant()
+    GLOBAL_levelData.stop.comboConstant = bound(1, GLOBAL_levelData.stop.comboConstant + 1, 501)
+    updateFrameData()
+  end
+
+  local function decreaseChainConstant()
+    GLOBAL_levelData.stop.chainConstant = bound(1, GLOBAL_levelData.stop.chainConstant - 1, 501)
+    updateFrameData()
+  end
+
+  local function increaseChainConstant()
+    GLOBAL_levelData.stop.chainConstant = bound(1, GLOBAL_levelData.stop.chainConstant + 1, 501)
+    updateFrameData()
+  end
+
+  local function decreaseDangerConstant()
+    GLOBAL_levelData.stop.dangerConstant = bound(1, GLOBAL_levelData.stop.dangerConstant - 1, 501)
+    updateFrameData()
+  end
+
+  local function increaseDangerConstant()
+    GLOBAL_levelData.stop.dangerConstant = bound(1, GLOBAL_levelData.stop.dangerConstant + 1, 501)
+    updateFrameData()
+  end
+
+  local function decreaseCoefficient()
+    GLOBAL_levelData.stop.coefficient = bound(1, GLOBAL_levelData.stop.coefficient - 1, 25)
+    updateFrameData()
+  end
+
+  local function increaseCoefficient()
+    GLOBAL_levelData.stop.coefficient = bound(1, GLOBAL_levelData.stop.coefficient + 1, 25)
+    updateFrameData()
+  end
+
+  local function decreaseHover()
+    GLOBAL_levelData.frameConstants.HOVER = bound(1, GLOBAL_levelData.frameConstants.HOVER - 1, 15)
+    updateFrameData()
+  end
+
+  local function increaseHover()
+    GLOBAL_levelData.frameConstants.HOVER = bound(1, GLOBAL_levelData.frameConstants.HOVER + 1, 15)
+    updateFrameData()
+  end
+
+  local function decreaseGarbageHover()
+    GLOBAL_levelData.frameConstants.GARBAGE_HOVER = bound(1, GLOBAL_levelData.frameConstants.GARBAGE_HOVER - 1, 51)
+    updateFrameData()
+  end
+
+  local function increaseGarbageHover()
+    GLOBAL_levelData.frameConstants.GARBAGE_HOVER = bound(1, GLOBAL_levelData.frameConstants.GARBAGE_HOVER + 1, 51)
+    updateFrameData()
+  end
+
+  local function decreaseFlash()
+    GLOBAL_levelData.frameConstants.FLASH = bound(1, GLOBAL_levelData.frameConstants.FLASH - 1, 51)
+    updateFrameData()
+  end
+
+  local function increaseFlash()
+    GLOBAL_levelData.frameConstants.FLASH = bound(1, GLOBAL_levelData.frameConstants.FLASH + 1, 51)
+    updateFrameData()
+  end
+
+  local function decreaseFace()
+    GLOBAL_levelData.frameConstants.FACE = bound(1, GLOBAL_levelData.frameConstants.FACE - 1, 21)
+    updateFrameData()
+  end
+
+  local function increaseFace()
+    GLOBAL_levelData.frameConstants.FACE = bound(1, GLOBAL_levelData.frameConstants.FACE + 1, 21)
+    updateFrameData()
+  end
+
+  local function decreasePop()
+    GLOBAL_levelData.frameConstants.POP = bound(3, GLOBAL_levelData.frameConstants.POP - 1, 12)
+    updateFrameData()
+  end
+
+  local function increasePop()
+    GLOBAL_levelData.frameConstants.POP = bound(3, GLOBAL_levelData.frameConstants.POP + 1, 12)
+    updateFrameData()
+  end
+
+  levelEditMenu:add_button(loc("level"), nextMenu, goEscape, decreaseLevel, increaseLevel)
+  levelEditMenu:add_button("startingSpeed", nextMenu, goEscape, decreaseSpeed, increaseSpeed)
+  levelEditMenu:add_button("speedIncreaseMode", nextMenu, goEscape, toggleSpeedIncreaseMode, toggleSpeedIncreaseMode)
+  levelEditMenu:add_button("shockFrequency", nextMenu, goEscape, decreaseShockFrequency, increaseShockFrequency)
+  levelEditMenu:add_button("shockCap", nextMenu, goEscape, decreaseShockCap, increaseShockCap)
+  levelEditMenu:add_button("colors", nextMenu, goEscape, decreaseColors, increaseColors)
+  levelEditMenu:add_button("maxHealth", nextMenu, goEscape, decreaseMaxHealth, increaseMaxHealth)
+  levelEditMenu:add_button("stop.formula", nextMenu, goEscape, toggleStopFormula, toggleStopFormula)
+  levelEditMenu:add_button("stop.comboConstant", nextMenu, goEscape, decreaseComboConstant, increaseComboConstant)
+  levelEditMenu:add_button("stop.chainConstant", nextMenu, goEscape, decreaseChainConstant, increaseChainConstant)
+  levelEditMenu:add_button("stop.dangerConstant", nextMenu, goEscape, decreaseDangerConstant, increaseDangerConstant)
+  levelEditMenu:add_button("stop.coefficient", nextMenu, goEscape, decreaseCoefficient, increaseCoefficient)
+  levelEditMenu:add_button("frameConstants.HOVER", nextMenu, goEscape, decreaseHover, increaseHover)
+  levelEditMenu:add_button("frameConstants.GARBAGE_HOVER", nextMenu, goEscape, decreaseGarbageHover, increaseGarbageHover)
+  levelEditMenu:add_button("frameConstants.FLASH", nextMenu, goEscape, decreaseFlash, increaseFlash)
+  levelEditMenu:add_button("frameConstants.FACE", nextMenu, goEscape, decreaseFace, increaseFace)
+  levelEditMenu:add_button("frameConstants.POP", nextMenu, goEscape, decreasePop, increasePop)
+  levelEditMenu:add_button(loc("back"), exitSettings, exitSettings)
+  levelEditMenu:set_button_setting(1, level)
+  updateFrameData()
+
+  while true do
+    levelEditMenu:draw()
+    wait()
+    variable_step(
+      function()
+        levelEditMenu:update()
+      end
+    )
+
+    if ret then
+      levelEditMenu:remove_self()
       return unpack(ret)
     end
   end
