@@ -17,11 +17,11 @@ local OnePlayerVsSelf = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.SELF,
   scene = "VsSelfGame",
-  hasShock = true,
   richPresenceLabel = loc("mm_1_vs"),
   -- temporary crutch until all checks for this are eliminated
   matchMode = "vs",
-  winCondition = WinCondition.NONE
+  winCondition = WinCondition.NONE,
+  doCountdown = true
 }
 
 local OnePlayerTimeAttack = {
@@ -36,10 +36,11 @@ local OnePlayerTimeAttack = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.NONE,
   scene = "TimeAttackGame",
-  hasShock = false,
   richPresenceLabel = loc("mm_1_time"),
   matchMode = "time",
-  winCondition = WinCondition.NONE
+  winCondition = WinCondition.NONE,
+  doCountdown = true,
+  timeLimit = 120
 }
 
 local OnePlayerEndless = {
@@ -54,10 +55,10 @@ local OnePlayerEndless = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.NONE,
   scene = "EndlessGame",
-  hasShock = false,
   richPresenceLabel = loc("mm_1_endless"),
   matchMode = "endless",
-  winCondition = WinCondition.NONE
+  winCondition = WinCondition.NONE,
+  doCountdown = true
 }
 
 local OnePlayerTraining = {
@@ -72,9 +73,9 @@ local OnePlayerTraining = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.ATTACK_ENGINE,
   scene = "GameBase",
-  hasShock = true,
   richPresenceLabel = loc("mm_1_training"),
-  winCondition = WinCondition.NONE
+  winCondition = WinCondition.NONE,
+  doCountdown = true
 }
 
 local OnePlayerPuzzle = {
@@ -90,9 +91,9 @@ local OnePlayerPuzzle = {
   stackInteraction = StackInteraction.NONE,
   scene = "PuzzleGame",
   matchMode = "puzzle",
-  hasShock = false,
   richPresenceLabel = loc("mm_1_puzzle"),
-  winCondition = WinCondition.NONE
+  winCondition = WinCondition.NONE,
+  doCountdown = false
 }
 
 local OnePlayerChallenge = {
@@ -107,9 +108,9 @@ local OnePlayerChallenge = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.HEALTH_ENGINE,
   scene = "GameBase",
-  hasShock = true,
   richPresenceLabel = loc("mm_1_challenge_mode"),
-  winCondition = WinCondition.GAME_OVER
+  winCondition = WinCondition.GAME_OVER,
+  doCountdown = true
 }
 
 local TwoPlayerVersus = {
@@ -125,9 +126,9 @@ local TwoPlayerVersus = {
   selectColorRandomization = false,
   stackInteraction = StackInteraction.VERSUS,
   scene = "OnlineVsGame",
-  hasShock = true,
   richPresenceLabel = loc("mm_2_vs"),
-  winCondition = WinCondition.GAME_OVER
+  winCondition = WinCondition.GAME_OVER,
+  doCountdown = true
 }
 
 GameModes.Styles = Styles

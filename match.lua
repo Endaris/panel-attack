@@ -594,3 +594,17 @@ function Match:getInfo()
 
   return info
 end
+
+function Match:waitForAssets()
+  for i = 1, #self.players do
+    local playerSettings = self.players[i].settings
+    playerSettings.characterId = CharacterLoader.resolveCharacterSelection()
+    CharacterLoader.load(playerSettings.characterId)
+  end
+
+  CharacterLoader.wait()
+
+  self.stage = StageLoader.resolveStageSelection(self.stage)
+  StageLoader.load(self.stage)
+  StageLoader.wait()
+end

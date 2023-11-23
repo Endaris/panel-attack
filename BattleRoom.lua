@@ -63,3 +63,8 @@ function BattleRoom:createMatch()
 
   return self.match
 end
+
+function BattleRoom:addPlayer(name, publicId, isLocal)
+  local player = Player(name, publicId, self, isLocal)
+  self.players[#self.players+1] = player
+end

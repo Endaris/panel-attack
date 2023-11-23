@@ -2431,7 +2431,7 @@ function Stack.onPop(self, panel)
     self.score = self.score + 10
 
     self.panels_cleared = self.panels_cleared + 1
-    if self.match.mode.hasShock and self.panels_cleared % level_to_metal_panel_frequency[self.level] == 0 then
+    if self.panels_cleared % level_to_metal_panel_frequency[self.level] == 0 then
       self.metal_panels_queued = min(self.metal_panels_queued + 1, level_to_metal_panel_cap[self.level])
     end
     if self:shouldChangeSoundEffects() then

@@ -10,7 +10,7 @@ local Player = class(function(self, name, publicId, battleRoom, isLocal)
   self.rating = nil
   self.stack = nil
   self.battleRoom = battleRoom
-  self.playerNumber = 1
+  self.playerNumber = nil
   self.isLocal = isLocal or false
   self.inputConfiguration = nil
 end)
@@ -19,7 +19,7 @@ function Player:getWinCount()
   return self.wins + self.modifiedWins
 end
 
-function Player:createStackFromSettings()
+function Player:createStackFromSettings(wantsCanvas)
   local args = {}
   args.which = self.playerNumber
   args.player_number = self.playerNumber
@@ -33,6 +33,8 @@ function Player:createStackFromSettings()
     args.difficulty = self.settings.difficulty
     args.speed = self.settings.speed
   end
+  args.inputMethod = self.settings.inputMethod
+  args.wantsCanvas = wantsCanvas or false
 
   self.stack = Stack(args)
 
