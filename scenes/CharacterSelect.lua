@@ -203,7 +203,7 @@ function CharacterSelect:loadLevels(unitWidth)
 end
 
 function CharacterSelect:update()
-  self.matchSetup:update()
+  GAME.battleRoom:update()
   self.ui.cursor:receiveInputs()
   GAME.gfx_q:push({self.ui.grid.draw, {self.ui.grid}})
   GAME.gfx_q:push({self.ui.cursor.draw, {self.ui.cursor}})

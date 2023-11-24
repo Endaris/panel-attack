@@ -20,6 +20,14 @@ function Player:getWinCount()
   return self.wins + self.modifiedWins
 end
 
+function Player:setWinCount(count)
+  self.wins = count
+end
+
+function Player:incrementWinCount()
+  self.wins = self.wins + 1
+end
+
 function Player:createStackFromSettings(match, wantsCanvas)
   local args = {}
   args.which = self.playerNumber
@@ -102,7 +110,7 @@ function Player:setPanels(panelId)
   end
 end
 
-function Player:setRanked(wantsRanked)
+function Player:setWantsRanked(wantsRanked)
   if wantsRanked ~= self.settings.wantsRanked then
     self.settings.wantsRanked = wantsRanked
     self:onPropertyChanged("wantsRanked")
@@ -117,9 +125,13 @@ function Player:setWantsReady(wantsReady)
 end
 
 function Player:setLoaded(hasLoaded)
-  if hasLoaded ~= self.settings.hasLoaded then
-    self.settings.hasLoaded = hasLoaded
-    self:onPropertyChanged("hasLoaded")
+  -- loaded is only set for non-local players to determine if they are ready for the match
+  -- the battleRoom is in charge of checking whether all assets have been loaded locally
+  if not self.isLocal then
+    if hasLoaded ~= self.settings.hasLoaded then
+      self.settings.hasLoaded = hasLoaded
+      self:onPropertyChanged("hasLoaded")
+    end
   end
 end
 
@@ -160,7 +172,7 @@ function Player.getLocalPlayer()
   player:setCharacter(config.character)
   player:setStage(config.stage)
   player:setPanels(config.panels)
-  player:setRanked(config.ranked)
+  player:setWantsRanked(config.ranked)
   player:setInputMethod(config.inputMethod)
 
   player.isLocal = true

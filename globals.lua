@@ -41,3 +41,5 @@ SFX_GameOver_Play = 0
 global_op_state = nil
 
 current_use_music_from = "stage" -- either "stage" or "characters", no other values!
+-- the local player used for player 1
+LocalPlayer = nil

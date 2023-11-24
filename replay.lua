@@ -146,13 +146,15 @@ local function addReplayStatisticsToReplay(match, replay)
   if winner then
     replay.winner = winner.publicId or winner.playerNumber
   end
-  
+
   for i = 1, #match.players do
     local stack = match.players[i].stack
     local playerTable = replay.players[i]
     playerTable.analytics = stack.analytic.data
     playerTable.analytics.score = stack.score
-    playerTable.analytics.rating = match.room_ratings[i]
+    if match.room_ratings and match.room_ratings[i] then
+      playerTable.analytics.rating = match.room_ratings[i]
+    end
   end
 
   return replay
@@ -183,12 +185,10 @@ end
 
 function Replay.finalizeReplay(match, replay)
   replay = addReplayStatisticsToReplay(match, replay)
-  replay[match.mode].in_buf = table.concat(match.P1.confirmedInput)
-  replay[match.mode].stage = current_stage
-  if match.P2 then
-    replay[match.mode].I = table.concat(match.P2.confirmedInput)
+  replay.stage = current_stage
+  for i = 1, #match.players do
+    replay.players[i].settings.inputs = compress_input_string(table.concat(match.players[i].stack.confirmedInput))
   end
-  Replay.compressReplay(replay)
 end
 
 function Replay.finalizeAndWriteVsReplay(battleRoom, outcome_claim, incompleteGame, match, replay)
@@ -228,24 +228,6 @@ function Replay.finalizeAndWriteVsReplay(battleRoom, outcome_claim, incompleteGa
   end
 
   Replay.finalizeAndWriteReplay(extraPath, extraFilename, match, replay)
-end
-
-function Replay.compressReplay(replay)
-  if replay.puzzle then
-    replay.puzzle.in_buf = compress_input_string(replay.puzzle.in_buf)
-    logger.debug("Compressed puzzle in_buf")
-    logger.debug(replay.puzzle.in_buf)
-  end
-  if replay.endless then
-    replay.endless.in_buf = compress_input_string(replay.endless.in_buf)
-    logger.debug("Compressed endless in_buf")
-    logger.debug(replay.endless.in_buf)
-  end
-  if replay.vs then
-    replay.vs.I = compress_input_string(replay.vs.I)
-    replay.vs.in_buf = compress_input_string(replay.vs.in_buf)
-    logger.debug("Compressed vs I/in_buf")
-  end
 end
 
 -- writes a replay file of the given path and filename

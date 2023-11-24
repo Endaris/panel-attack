@@ -15,6 +15,7 @@ local save = require("save")
 local fileUtils = require("FileUtils")
 local handleShortcuts = require("Shortcuts")
 local scenes = nil
+local Player = require("Player")
 require("rich_presence.RichPresence")
 
 -- Provides a scale that is on .5 boundary to make sure it renders well.
@@ -126,10 +127,24 @@ function Game:setupCoroutine()
 
   self:createScenes()
 
+  self:initializeLocalPlayer()
+
   -- Run all unit tests now that we have everything loaded
   if TESTS_ENABLED then
     self:runUnitTests()
   end
+end
+
+function Game:initializeLocalPlayer()
+  LocalPlayer = Player.getLocalPlayer()
+  LocalPlayer:subscribe("characterId", function(newId) config.character = newId end)
+  LocalPlayer:subscribe("stageId", function(newId) config.stage = newId end)
+  LocalPlayer:subscribe("panelId", function(newId) config.panels = newId end)
+  LocalPlayer:subscribe("inputMethod", function(inputMethod) config.inputMethod = inputMethod end)
+  LocalPlayer:subscribe("speed", function(speed) config.endless_speed = speed end)
+  LocalPlayer:subscribe("difficulty", function(difficulty) config.endless_difficulty = difficulty end)
+  LocalPlayer:subscribe("level", function(level) config.level = level end)
+  LocalPlayer:subscribe("wantsRanked", function(wantsRanked) config.ranked = wantsRanked end)
 end
 
 function Game:createDirectoriesIfNeeded()

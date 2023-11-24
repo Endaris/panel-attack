@@ -651,6 +651,8 @@ function Match:start(replay)
     self[pString] = self.players[i].stack
     self.players[i].stack:starting_state()
   end
+
+  self.ready = true
 end
 
 function Match:setStage(stageId)
@@ -691,5 +693,18 @@ function Match:setSeed(seed)
     error("Didn't get provided with a seed from the server")
   else
     -- Use the default random seed set up on match creation
+  end
+end
+
+function Match:getWinner()
+  if #self.players < 2 then
+    -- no winner in 1p matches except puzzles
+    return nil
+  else
+    for i = 1, #self.players do
+      if not self.players[i].stack.game_over then
+        return self.players[i]
+      end
+    end
   end
 end
