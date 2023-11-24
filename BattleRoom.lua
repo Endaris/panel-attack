@@ -5,15 +5,33 @@ local Player = require("Player")
 -- A Battle Room is a session of vs battles, keeping track of the room number, wins / losses etc
 BattleRoom =
   class(
-  function(self, mode, roomCreationData)
+  function(self, mode, roomData)
     assert(mode)
     self.mode = mode
     self.players = {}
     self.spectators = {}
     self.spectating = false
     self.trainingModeSettings = nil
-    if roomCreationData then
+    if roomData then
       -- this could come from online or replay
+      if roomData.replayVersion then
+        -- coming from a replay
+        for i = 1, #roomData.players do
+          local rpp = roomData.players[i]
+          local player = Player(rpp.name, rpp.publicId)
+          player.playerNumber = i
+          player.wins = rpp.wins
+          player.settings.panelId = rpp.settings.panelId
+          player.settings.characterId = CharacterLoader.resolveCharacterSelection(rpp.settings.characterId)
+          player.settings.inputMethod = rpp.settings.inputMethod
+          player.settings.level = rpp.settings.level
+          player.settings.difficulty = rpp.settings.difficulty
+          --player.settings.levelData = rpp.settings.levelData
+          self:addPlayer(player)
+        end
+      elseif roomData.create_room then
+        -- coming from online
+      end
     else
       -- no room creation data means the local player is definitely involved
       self:addPlayer(Player.getLocalPlayer())
@@ -60,7 +78,7 @@ function BattleRoom:createMatch()
 end
 
 function BattleRoom:addNewPlayer(name, publicId, isLocal)
-  local player = Player(name, publicId, self, isLocal)
+  local player = Player(name, publicId, isLocal)
   player.playerNumber = #self.players+1
   self.players[#self.players+1] = player
   return player

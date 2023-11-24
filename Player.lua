@@ -1,7 +1,7 @@
 local class = require("class")
 local GameModes = require("GameModes")
 
-local Player = class(function(self, name, publicId, battleRoom, isLocal)
+local Player = class(function(self, name, publicId, isLocal)
   self.name = name
   self.wins = 0
   self.modifiedWins = 0
@@ -10,7 +10,6 @@ local Player = class(function(self, name, publicId, battleRoom, isLocal)
   self.trainingModeSettings = nil
   self.rating = nil
   self.stack = nil
-  self.battleRoom = battleRoom
   self.playerNumber = nil
   self.isLocal = isLocal or false
   self.inputConfiguration = nil

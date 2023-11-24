@@ -119,27 +119,13 @@ local function createMatchFromReplay(replay, wantsCanvas)
     end
   end
 
-  for i = 1, #replay.players do
-    local rpp = replay.players[i]
-    local player = Player(rpp.name, rpp.publicId, battleRoom)
-    player.playerNumber = i
-    player.wins = rpp.wins
-    player.settings.panelId = rpp.settings.panelId
-    player.settings.characterId = CharacterLoader.resolveCharacterSelection(rpp.settings.characterId)
-    player.settings.inputMethod = rpp.settings.inputMethod
-    player.settings.level = rpp.settings.level
-    player.settings.difficulty = rpp.settings.difficulty
-    --player.settings.levelData = rpp.settings.levelData
-    battleRoom:addPlayer(player)
-  end
-
   GAME.battleRoom = battleRoom
   local match = battleRoom:createMatch()
 
   match.isFromReplay = true
   match.doCountdown = replay.doCountdown
-  match.seed = replay.seed
-  match.stageId = StageLoader.resolveStageSelection(replay.stage)
+  match:setSeed(replay.seed)
+  match:setStage(replay.stageId)
 
   return match
 end

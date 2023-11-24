@@ -6,7 +6,7 @@ local Player = require("Player")
 local function puzzleTest()
   -- to stop rising
   local battleRoom = BattleRoom(GameModes.ONE_PLAYER_PUZZLE)
-  local player = Player("P1", 1, battleRoom)
+  local player = Player("P1", 1)
   player.settings.level = 5
   player.settings.inputMethod = "controller"
   local match = battleRoom:createMatch()

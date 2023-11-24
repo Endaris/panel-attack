@@ -7,7 +7,6 @@ local Player = require("Player")
 
 local MatchSetup = class(function(match, mode, online, localPlayerNumber)
   match.mode = mode
-  match:initializeSubscriptionList()
   if mode.style == GameModes.Styles.CHOOSE then
     if config.endless_level then
       match.style = GameModes.Styles.MODERN
