@@ -8,14 +8,16 @@ BattleRoom =
   function(self, mode, roomCreationData)
     assert(mode)
     self.mode = mode
-    if roomCreationData then
-      self.online = true
-    end
-
     self.players = {}
     self.spectators = {}
     self.spectating = false
     self.trainingModeSettings = nil
+    if roomCreationData then
+      -- this could come from online or replay
+    else
+      -- no room creation data means the local player is definitely involved
+      self:addPlayer(Player.getLocalPlayer())
+    end
   end
 )
 

@@ -22,24 +22,7 @@ local MatchSetup = class(function(match, mode, online, localPlayerNumber)
   match.localPlayerNumber = localPlayerNumber
 
   match.players = {}
-  for i = 1, mode.playerCount do
-    match.players[i] = {}
-    match.players[i].rating = {}
-    if not online or i == localPlayerNumber then
-      match.players[i].isLocal = true
-      match:initializeLocalPlayer(i)
-    end
-  end
 end)
-
-function MatchSetup:initializeSubscriptionList()
-  self.subscriptionList = {}
-  for i = 1, self.mode.playerCount do
-    self.subscriptionList[i] = {}
-    self.subscriptionList[i].characterId = {}
-    -- extend as necessary
-  end
-end
 
 function MatchSetup:updateLocalConfig(playerNumber)
   -- update config, does not redefine it

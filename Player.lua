@@ -49,7 +49,15 @@ end
 
 -- Ui Elements can subscribe to properties by passing a callback 
 function Player:subscribe(property, callback)
-  self.subscriptionList[property][#self.subscriptionList[property] + 1] = callback
+  if self[property] then
+    if not self.subscriptionList[property] then
+      self.subscriptionList[property] = {}
+    end
+    self.subscriptionList[property][#self.subscriptionList[property] + 1] = callback
+    return true
+  end
+
+  return false
 end
 
 -- the callback is executed with the new property value as the argument whenever the property is modified for the player
@@ -155,6 +163,8 @@ function Player.getLocalPlayer()
   player:setPanels(config.panels)
   player:setRanked(config.ranked)
   player:setInputMethod(config.inputMethod)
+
+  player.isLocal = true
 
   return player
 end
