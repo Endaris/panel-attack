@@ -3,6 +3,7 @@ local tableUtils = require("tableUtils")
 local GameModes = require("GameModes")
 local sceneManager = require("scenes.sceneManager")
 local Replay = require("replay")
+local Player = require("Player")
 
 local MatchSetup = class(function(match, mode, online, localPlayerNumber)
   match.mode = mode
@@ -299,165 +300,22 @@ function MatchSetup:startMatch(stageId, seed, replayOfMatch)
   -- end
 
   if not GAME.battleRoom then
-    GAME.battleRoom = BattleRoom(self.mode.matchMode)
+    GAME.battleRoom = BattleRoom(self.mode)
   end
   GAME.match = GAME.battleRoom:createMatch()
 
-  self:setMatchStage(stageId)
-  self:setSeed(seed)
+  GAME.match:setStage(stageId)
+  GAME.match:setSeed(seed)
 
   if match_type == "Ranked" and not GAME.match.room_ratings then
     GAME.match.room_ratings = {}
   end
 
-  CharacterLoader.wait()
-  StageLoader.wait()
-
-  local stacks = self:createStacks()
-
-  if replayOfMatch then
-    self:loadReplayData(stacks, replayOfMatch)
-  end
+  GAME.match:start(replayOfMatch)
 
   replay = Replay.createNewReplay(GAME.match)
-
   -- game dies when using the fade transition for unclear reasons
   sceneManager:switchToScene(self.mode.scene, {}, "none")
-end
-
-function MatchSetup:setMatchStage(stageId)
-  if stageId then
-    -- we got one from the server
-    self.stageId = StageLoader.resolveStageSelection(stageId)
-  elseif self.mode.playerCount == 1 then
-    if self.players[1].stageId == random_stage_special_value then
-      self.stageId = StageLoader.resolveStageSelection(tableUtils.getRandomElement(stages_ids_for_current_theme))
-    else
-      self.stageId = self.players[1].stageId
-    end
-  else
-    self.stageId = StageLoader.resolveStageSelection(tableUtils.getRandomElement(stages_ids_for_current_theme))
-  end
-  StageLoader.load(self.stageId)
-  -- TODO check if we can unglobalize that
-  current_stage = self.stageId
-end
-
-function MatchSetup:getAttackEngine()
-  -- TODO: Get these settings via self.trainingFile instead
-  local trainingModeSettings = GAME.battleRoom.trainingModeSettings
-  local attackEngine = AttackEngine:createEngineForTrainingModeSettings(trainingModeSettings)
-
-  return attackEngine
-end
-
-function MatchSetup:generateSeed()
-  local seed = 17
-  seed = seed * 37 + self.players[1].rating.new
-  seed = seed * 37 + self.players[2].rating.new
-  seed = seed * 37 + GAME.battleRoom.playerWinCounts[1]
-  seed = seed * 37 + GAME.battleRoom.playerWinCounts[2]
-
-  return seed
-end
-
-function MatchSetup:getRatingDiff(player)
-  return self.players[player].rating.new - self.players[player].rating.old
-end
-
-function MatchSetup:setSeed(seed)
-  if seed then
-    GAME.match.seed = seed
-  elseif self.online and #self.players > 1 then
-    GAME.match.seed = self:generateSeed()
-  elseif self.online and self.ranked and #self.players == 1 then
-    -- not used yet but for future time attack leaderboard
-    error("Didn't get provided with a seed from the server")
-  else
-    -- GAME.match has a random seed by default already
-  end
-end
-
-function MatchSetup:createStacks()
-  local stacks = {}
-
-  for playerId = 1, #self.players do
-    stacks[playerId] = Stack ({
-      which = playerId,
-      match = GAME.match,
-      is_local = self.players[playerId].isLocal,
-      panels_dir = self.players[playerId].panelId,
-      level = self.players[playerId].level,
-      character = self.players[playerId].characterId,
-      player_number = playerId
-    })
-  end
-
-  GAME.match:addPlayer(stacks[1])
-  if stacks[2] then
-    GAME.match:addPlayer(stacks[2])
-  end
-
-  if self.online and self.localPlayerNumber then
-    -- to make sure the local player ends up as player 1 locally
-    -- but without messing up the interpretation of server messages by flipping numbers
-    table.sort(stacks, function(a, b)
-      return a.isLocal > b.isLocal
-    end)
-  end
-
-  if stacks[2] then
-    stacks[2]:moveForPlayerNumber(2)
-  end
-
-  if self.mode.stackInteraction == GameModes.StackInteraction.VERSUS then
-    for i = 1, #stacks do
-      for j = 1, #stacks do
-        if i ~= j then
-          -- once we have more than 2P in a single mode, setGarbageTarget needs to put these into an array
-          -- or we rework it anyway for team play
-          stacks[i]:setGarbageTarget(stacks[j])
-        end
-      end
-    end
-  elseif self.mode.stackInteraction == GameModes.StackInteraction.SELF then
-    for i = 1, #stacks do
-      stacks[i]:setGarbageTarget(stacks[i])
-    end
-  elseif self.mode.stackInteraction == GameModes.StackInteraction.ATTACK_ENGINE then
-    local attackEngine
-    self:getAttackEngine()
-    for i = 1, #stacks do
-      local attackEngineClone = deepcpy(attackEngine)
-      attackEngineClone:setGarbageTarget(stacks[i])
-    end
-  end
-
-  -- Prepare to start the game
-  for i = 1, #stacks do
-    stacks[i]:starting_state()
-  end
-
-  return stacks
-end
-
-function MatchSetup:loadReplayData(stacks, replay)
-  if self.online and not self.localPlayerNumber then
-    -- we're spectating
-    stacks[1]:receiveConfirmedInput(uncompress_input_string(replay.vs.in_buf))
-    if stacks[2] then
-      stacks[2]:receiveConfirmedInput(uncompress_input_string(replay.vs.I))
-    end
-
-    replay_of_match_so_far = nil
-    -- this makes non local stacks run until caught up
-    stacks[1].play_to_end = true
-    if stacks[2] then
-      stacks[2].play_to_end = true
-    end
-  end
-
-  return stacks
 end
 
 function MatchSetup:updateLoadingState()

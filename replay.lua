@@ -23,14 +23,14 @@ function Replay.createNewReplay(match)
   result.seed = match.seed
   result.ranked = match_type == "Ranked"
   result.doCountdown = match.doCountdown or true
-  result.stage = match.stage
+  result.stage = match.stageId
   result.gameMode = {
     stackInteraction = battleRoom.mode.stackInteraction,
     winCondition = battleRoom.mode.winCondition
   }
 
   result.players = {}
-  for i = 1, battleRoom.players do
+  for i = 1, #battleRoom.players do
     local player = battleRoom.players[i]
     result.players[i] = {
       name = player.name,
@@ -139,7 +139,7 @@ local function createMatchFromReplay(replay, wantsCanvas)
   match.isFromReplay = true
   match.doCountdown = replay.doCountdown
   match.seed = replay.seed
-  match.stage = StageLoader.resolveStageSelection(replay.stage)
+  match.stageId = StageLoader.resolveStageSelection(replay.stage)
 
   return match
 end

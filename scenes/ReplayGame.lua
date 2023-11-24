@@ -25,7 +25,7 @@ sceneManager:addScene(ReplayGame)
 
 function ReplayGame:customLoad(scene_params)
   match = Replay.loadFromFile(replay, true)
-  match:start()
+  match:start(replay)
 end
 
 function ReplayGame:customRun()

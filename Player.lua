@@ -41,4 +41,8 @@ function Player:createStackFromSettings(wantsCanvas)
   return self.stack
 end
 
+function Player:getRatingDiff()
+  return self.rating.new - self.rating.old
+end
+
 return Player

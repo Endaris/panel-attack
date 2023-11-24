@@ -600,12 +600,12 @@ function Match:waitForAssets()
     CharacterLoader.wait()
   end
 
-  self.stage = StageLoader.resolveStageSelection(self.stage)
-  StageLoader.load(self.stage)
+  self.stageId = StageLoader.resolveStageSelection(self.stageId)
+  StageLoader.load(self.stageId)
   StageLoader.wait()
 end
 
-function Match:start()
+function Match:start(replay)
   self:waitForAssets()
 
   for i = 1, #self.players do
@@ -613,28 +613,87 @@ function Match:start()
     stack.do_countdown = self.doCountdown
 
     if self.isFromReplay then
+      -- watching a finished replay
       stack:receiveConfirmedInput(replay.players[i].settings.inputs)
       stack.max_runs_per_frame = 1
+    elseif replay then
+      -- catching up to a match in progress
+      stack:receiveConfirmedInput(replay.players[i].settings.inputs)
+      stack.play_to_end = true
     end
   end
 
-  if self.battleRoom.mode == GameModes.ONE_PLAYER_VS_SELF then
-    self.players[1].stack:setGarbageTarget(self.players[1].stack)
-  elseif self.battleRoom.mode == GameModes.TWO_PLAYER_VS then
-    self.players[1].stack:setGarbageTarget(self.players[2].stack)
-    self.players[1].stack:setOpponent(self.players[2].stack)
-    self.players[2].stack:setGarbageTarget(self.players[1].stack)
-    self.players[2].stack:setOpponent(self.players[1].stack)
-    self.players[2].stack:moveForPlayerNumber(2)
-  elseif self.battleRoom.mode == GameModes.ONE_PLAYER_TRAINING then
+  if self.mode.stackInteraction == GameModes.StackInteraction.SELF then
+    for i = 1, #self.players do
+      self.players[i].stack:setGarbageTarget(self.players[i].stack)
+    end
+  elseif self.mode.stackInteraction == GameModes.StackInteraction.VERSUS then
+    for i = 1, #self.players do
+      for j = 1, #self.players do
+        if i ~= j then
+          -- once we have more than 2P in a single mode, setGarbageTarget needs to put these into an array
+          -- or we rework it anyway for team play
+          self.players[i].stack:setGarbageTarget(self.players[j].stack)
+        end
+      end
+    end
+  elseif self.mode.stackInteraction == GameModes.StackInteraction.ATTACK_ENGINE then
     local trainingModeSettings = GAME.battleRoom.trainingModeSettings
     local attackEngine = AttackEngine:createEngineForTrainingModeSettings(trainingModeSettings)
-    attackEngine:setGarbageTarget(self.players[1].stack)
+    for i = 1, #self.players do
+      local attackEngineClone = deepcpy(attackEngine)
+      attackEngineClone:setGarbageTarget(self.players[i].stack)
+    end
+  end
+
+  for i = 2, #self.players do
+    self.players[i].stack:moveForPlayerNumber(i)
   end
 
   for i = 1, #self.players do
     local pString = "P" .. tostring(i)
     self[pString] = self.players[i].stack
     self.players[i].stack:starting_state()
+  end
+end
+
+function Match:setStage(stageId)
+  if stageId then
+    -- we got one from the server
+    self.stageId = StageLoader.resolveStageSelection(stageId)
+  elseif self.mode.playerCount == 1 then
+    if self.players[1].settings.stageId == random_stage_special_value then
+      self.stageId = StageLoader.resolveStageSelection(tableUtils.getRandomElement(stages_ids_for_current_theme))
+    else
+      self.stageId = self.players[1].settings.stageId
+    end
+  else
+    self.stageId = StageLoader.resolveStageSelection(tableUtils.getRandomElement(stages_ids_for_current_theme))
+  end
+  StageLoader.load(self.stageId)
+  -- TODO check if we can unglobalize that
+  current_stage = self.stageId
+end
+
+function Match:generateSeed()
+  local seed = 17
+  seed = seed * 37 + self.players[1].rating.new
+  seed = seed * 37 + self.players[2].rating.new
+  seed = seed * 37 + GAME.battleRoom.playerWinCounts[1]
+  seed = seed * 37 + GAME.battleRoom.playerWinCounts[2]
+
+  return seed
+end
+
+function Match:setSeed(seed)
+  if seed then
+    self.seed = seed
+  elseif self.online and #self.players > 1 then
+    self.seed = self:generateSeed()
+  elseif self.battleRoom.online and self.battleRoom.ranked and #self.players == 1 then
+    -- not used yet but for future time attack leaderboard
+    error("Didn't get provided with a seed from the server")
+  else
+    -- Use the default random seed set up on match creation
   end
 end
