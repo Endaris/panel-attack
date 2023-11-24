@@ -21,11 +21,11 @@ function Player:getWinCount()
   return self.wins + self.modifiedWins
 end
 
-function Player:createStackFromSettings(wantsCanvas)
+function Player:createStackFromSettings(match, wantsCanvas)
   local args = {}
   args.which = self.playerNumber
   args.player_number = self.playerNumber
-  args.match = self.battleRoom.match
+  args.match = match
   args.is_local = self.isLocal
   args.panels_dir = self.settings.panelId
   args.character = self.settings.characterId

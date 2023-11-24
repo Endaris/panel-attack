@@ -609,7 +609,7 @@ function Match:start(replay)
   self:waitForAssets()
 
   for i = 1, #self.players do
-    local stack = self.players[i]:createStackFromSettings(true)
+    local stack = self.players[i]:createStackFromSettings(self, true)
     stack.do_countdown = self.doCountdown
 
     if self.isFromReplay then
@@ -644,10 +644,6 @@ function Match:start(replay)
       local attackEngineClone = deepcpy(attackEngine)
       attackEngineClone:setGarbageTarget(self.players[i].stack)
     end
-  end
-
-  for i = 2, #self.players do
-    self.players[i].stack:moveForPlayerNumber(i)
   end
 
   for i = 1, #self.players do

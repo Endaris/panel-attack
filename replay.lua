@@ -85,34 +85,34 @@ local function createMatchFromReplay(replay, wantsCanvas)
 
   if replay.gameMode.stackInteraction == GameModes.StackInteraction.VERSUS then
     if #replay.players == 2 then
-      battleRoom = BattleRoom(GameModes.TWO_PLAYER_VS)
+      battleRoom = BattleRoom(GameModes.TWO_PLAYER_VS, replay)
     else
       error("There is no versus game mode for more or less than 2 players")
     end
   elseif replay.gameMode.stackInteraction == GameModes.StackInteraction.SELF then
     if #replay.players == 1 then
-      battleRoom = BattleRoom(GameModes.ONE_PLAYER_VS_SELF)
+      battleRoom = BattleRoom(GameModes.ONE_PLAYER_VS_SELF, replay)
     else
       error("There is no versus self game mode for more than 1 player")
     end
   elseif replay.gameMode.stackInteraction == GameModes.StackInteraction.ATTACK_ENGINE then
     if #replay.players == 1 then
-      battleRoom = BattleRoom(GameModes.ONE_PLAYER_TRAINING)
+      battleRoom = BattleRoom(GameModes.ONE_PLAYER_TRAINING, replay)
     else
       error("There is no training game mode for more than 1 player")
     end
   elseif replay.gameMode.stackInteraction == GameModes.StackInteraction.HEALTH_ENGINE then
     if #replay.players == 1 then
-      battleRoom = BattleRoom(GameModes.ONE_PLAYER_CHALLENGE)
+      battleRoom = BattleRoom(GameModes.ONE_PLAYER_CHALLENGE, replay)
     else
       error("There is no challenge game mode for more than 1 player")
     end
   else -- if replay.gameMode.stackInteraction == GameModes.StackInteraction.NONE
     if #replay.players == 1 then
       if replay.timeLimit then
-        battleRoom = BattleRoom(GameModes.ONE_PLAYER_TIME_ATTACK)
+        battleRoom = BattleRoom(GameModes.ONE_PLAYER_TIME_ATTACK, replay)
       else
-        battleRoom = BattleRoom(GameModes.ONE_PLAYER_ENDLESS)
+        battleRoom = BattleRoom(GameModes.ONE_PLAYER_ENDLESS, replay)
       end
     else
       error("There is no time attack/endless game mode for more than 1 player")
