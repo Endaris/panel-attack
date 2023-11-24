@@ -300,18 +300,18 @@ function Match:drawTimer()
   end
 
   -- Draw the timer for time attack
-  if self.mode == "puzzle" then
+  if self.mode == GameModes.ONE_PLAYER_PUZZLE then
     -- puzzles don't have a timer...yet?
   else
     local frames = stack.game_stopwatch
-    if self.mode == "time" then
-      frames = (TIME_ATTACK_TIME * 60) - stack.game_stopwatch
+    if self.mode.timeLimit then
+      frames = (self.mode.timeLimit * 60) - stack.game_stopwatch
       if frames < 0 then
         frames = 0
       end
     end
     --frames = frames + 60 * 60 * 80 -- debug large timer rendering
-    local timeString = frames_to_time_string(frames, self.mode == "endless")
+    local timeString = frames_to_time_string(frames, self.mode == GameModes.ONE_PLAYER_ENDLESS)
     
     self:drawMatchLabel(stack.theme.images.IMG_time, stack.theme.timeLabel_Pos, stack.theme.timeLabel_Scale)
     self:drawMatchTime(timeString, self.time_quads, stack.theme.time_Pos, stack.theme.time_Scale)
