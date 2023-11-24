@@ -41,20 +41,6 @@ function MatchSetup:initializeSubscriptionList()
   end
 end
 
--- Ui Elements can subscribe to properties by passing a callback 
--- the callback is executed with the new property value as the argument whenever the property is modified for the player
-function MatchSetup:subscribe(property, player, callback)
-  self.subscriptionList[player][property][#self.subscriptionList[player][property] + 1] = callback
-end
-
-function MatchSetup:onPropertyChanged(property, player)
-  if self.subscriptionList[player][property] then
-    for i = 1, #self.subscriptionList[player][property] do
-      self.subscriptionList[player][property][i](self.players[player][property])
-    end
-  end
-end
-
 function MatchSetup:updateLocalConfig(playerNumber)
   -- update config, does not redefine it
   local player = self.players[playerNumber]
@@ -64,93 +50,6 @@ function MatchSetup:updateLocalConfig(playerNumber)
   config.inputMethod = player.inputMethod
   config.ranked = player.ranked
   config.panels = player.panelId
-end
-
-function MatchSetup:initializeLocalPlayer(playerNumber)
-  if self.mode.style == GameModes.Styles.CLASSIC then
-    self:setDifficulty(config.endless_difficulty, playerNumber)
-    self:setSpeed(config.endless_speed, playerNumber)
-  else
-    self:setLevel(config.level, playerNumber)
-  end
-
-  self:setCharacter(config.character, playerNumber)
-  self:setStage(config.stage, playerNumber)
-  self:setPanels(config.panels, playerNumber)
-
-  if self.online and self.mode.selectRanked then
-    self:setRanked(config.ranked, playerNumber)
-  end
-end
-
-function MatchSetup:setStage(stageId, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-  if stageId ~= self.players[player].stageId then
-    stageId = StageLoader.resolveStageSelection(stageId)
-    self.players[player].stageId = stageId
-    StageLoader.load(stageId)
-
-    self:onPropertyChanged("stageId", player)
-  end
-end
-
-function MatchSetup:setCharacter(characterId, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-  if characterId ~= self.players[player].characterId then
-    characterId = CharacterLoader.resolveCharacterSelection(characterId)
-    self.players[player].characterId = characterId
-    CharacterLoader.load(characterId)
-
-    self:onPropertyChanged("characterId", player)
-  end
-end
-
-function MatchSetup:setPanels(panelId, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-
-  if panels[panelId] then
-    self.players[player].panelId = panelId
-  else
-    -- default back to player panels always
-    self.players[player].panelId = config.panels
-  end
-  -- panels are always loaded so no loading is necessary
-
-  self:onPropertyChanged("panelId", player)
-end
-
-function MatchSetup:setRanked(wantsRanked, player)
-  if self.online and self.mode.selectRanked then
-    self.players[player].wantsRanked = wantsRanked
-
-    self:onPropertyChanged("wantsRanked", player)
-  else
-    error("Trying to set ranked in a game mode that doesn't support ranked play")
-  end
-end
-
-function MatchSetup:setWantsReady(wantsReady, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-
-  self.players[player].wantsReady = wantsReady
-  self:onPropertyChanged("wantsReady", player)
-end
-
-function MatchSetup:setLoaded(hasLoaded, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-
-  self.players[player].hasLoaded = hasLoaded
-  self:onPropertyChanged("hasLoaded", player)
 end
 
 function MatchSetup:setRating(rating, player)
@@ -219,38 +118,12 @@ function MatchSetup:setDifficulty(difficulty, player)
   end
 end
 
-function MatchSetup:setSpeed(speed, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-
-  if self.style == GameModes.Styles.CLASSIC then
-    self.players[player].speed = speed
-    self:onPropertyChanged("speed", player)
-  else
-    error("Trying to set speed while a non-classic style was selected")
-  end
-end
-
 function MatchSetup:setWinCount(winCount, player)
   if self.mode.playerCount > 1 then
     self.players[player].winCount = winCount
     self:onPropertyChanged("winCount", player)
   else
     error("Trying to set win count in one player modes")
-  end
-end
-
-function MatchSetup:setLevel(level, player)
-  if not player and self.mode.playerCount == 1 then
-    player = 1
-  end
-
-  if self.style == GameModes.Styles.CLASSIC then
-    error("Trying to set level while classic style was selected")
-  else
-    self.players[player].level = level
-    self:onPropertyChanged("level", player)
   end
 end
 

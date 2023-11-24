@@ -1,4 +1,5 @@
 local class = require("class")
+local GameModes = require("GameModes")
 
 local Player = class(function(self, name, publicId, battleRoom, isLocal)
   self.name = name
@@ -13,6 +14,7 @@ local Player = class(function(self, name, publicId, battleRoom, isLocal)
   self.playerNumber = nil
   self.isLocal = isLocal or false
   self.inputConfiguration = nil
+  self.subscriptionList = {}
 end)
 
 function Player:getWinCount()
@@ -43,6 +45,118 @@ end
 
 function Player:getRatingDiff()
   return self.rating.new - self.rating.old
+end
+
+-- Ui Elements can subscribe to properties by passing a callback 
+function Player:subscribe(property, callback)
+  self.subscriptionList[property][#self.subscriptionList[property] + 1] = callback
+end
+
+-- the callback is executed with the new property value as the argument whenever the property is modified for the player
+function Player:onPropertyChanged(property)
+  if self.subscriptionList[property] then
+    for i = 1, #self.subscriptionList[property] do
+      self.subscriptionList[property][i](self.settings[property])
+    end
+  end
+end
+
+function Player:setStage(stageId)
+  if stageId ~= self.settings.stageId then
+    stageId = StageLoader.resolveStageSelection(stageId)
+    self.settings.stageId = stageId
+    StageLoader.load(stageId)
+
+    self:onPropertyChanged("stageId")
+  end
+end
+
+function Player:setCharacter(characterId)
+  if characterId ~= self.settings.characterId then
+    characterId = CharacterLoader.resolveCharacterSelection(characterId)
+    self.settings.characterId = characterId
+    CharacterLoader.load(characterId)
+
+    self:onPropertyChanged("characterId")
+  end
+end
+
+function Player:setPanels(panelId)
+  if panelId ~= self.settings.panelId then
+    if panels[panelId] then
+      self.settings.panelId = panelId
+    else
+      -- default back to config panels always
+      self.settings.panelId = config.panels
+    end
+    -- panels are always loaded so no loading is necessary
+
+    self:onPropertyChanged("panelId")
+  end
+end
+
+function Player:setRanked(wantsRanked)
+  if wantsRanked ~= self.settings.wantsRanked then
+    self.settings.wantsRanked = wantsRanked
+    self:onPropertyChanged("wantsRanked")
+  end
+end
+
+function Player:setWantsReady(wantsReady)
+  if wantsReady ~= self.settings.wantsReady then
+    self.settings.wantsReady = wantsReady
+    self:onPropertyChanged("wantsReady")
+  end
+end
+
+function Player:setLoaded(hasLoaded)
+  if hasLoaded ~= self.settings.hasLoaded then
+    self.settings.hasLoaded = hasLoaded
+    self:onPropertyChanged("hasLoaded")
+  end
+end
+
+function Player:setDifficulty(difficulty)
+  if difficulty ~= self.settings.difficulty then
+    self.settings.difficulty = difficulty
+    self:onPropertyChanged("difficulty")
+  end
+end
+
+function Player:setSpeed(speed)
+  if speed ~= self.settings.speed then
+    self.settings.speed = speed
+    self:onPropertyChanged("speed")
+  end
+end
+
+function Player:setLevel(level)
+  if level ~= self.settings.level then
+    self.settings.level = level
+    self:onPropertyChanged("level")
+  end
+end
+
+function Player:setInputMethod(inputMethod)
+  if inputMethod ~= self.settings.inputMethod then
+    self.settings.inputMethod = inputMethod
+    self:onPropertyChanged("inputMethod")
+  end
+end
+
+function Player.getLocalPlayer()
+  local player = Player(config.name)
+
+  player:setDifficulty(config.endless_difficulty)
+  player:setSpeed(config.endless_speed)
+  player:setLevel(config.level)
+  player:setCharacter(config.character)
+  player:setStage(config.stage)
+  player:setPanels(config.panels)
+  player:setRanked(config.ranked)
+  player:setInputMethod(config.inputMethod)
+
+  return player
 end
 
 return Player
