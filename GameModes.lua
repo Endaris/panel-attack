@@ -21,7 +21,8 @@ local OnePlayerVsSelf = {
   -- temporary crutch until all checks for this are eliminated
   matchMode = "vs",
   winCondition = WinCondition.NONE,
-  doCountdown = true
+  doCountdown = true,
+  disallowAdjacentColors = true
 }
 
 local OnePlayerTimeAttack = {
@@ -40,7 +41,8 @@ local OnePlayerTimeAttack = {
   matchMode = "time",
   winCondition = WinCondition.NONE,
   doCountdown = true,
-  timeLimit = 120
+  timeLimit = 120,
+  disallowAdjacentColors = false
 }
 
 local OnePlayerEndless = {
@@ -58,7 +60,8 @@ local OnePlayerEndless = {
   richPresenceLabel = loc("mm_1_endless"),
   matchMode = "endless",
   winCondition = WinCondition.NONE,
-  doCountdown = true
+  doCountdown = true,
+  disallowAdjacentColors = false
 }
 
 local OnePlayerTraining = {
@@ -75,7 +78,8 @@ local OnePlayerTraining = {
   scene = "GameBase",
   richPresenceLabel = loc("mm_1_training"),
   winCondition = WinCondition.NONE,
-  doCountdown = true
+  doCountdown = true,
+  disallowAdjacentColors = true
 }
 
 local OnePlayerPuzzle = {
@@ -93,7 +97,8 @@ local OnePlayerPuzzle = {
   matchMode = "puzzle",
   richPresenceLabel = loc("mm_1_puzzle"),
   winCondition = WinCondition.NONE,
-  doCountdown = false
+  doCountdown = false,
+  disallowAdjacentColors = false
 }
 
 local OnePlayerChallenge = {
@@ -110,7 +115,8 @@ local OnePlayerChallenge = {
   scene = "GameBase",
   richPresenceLabel = loc("mm_1_challenge_mode"),
   winCondition = WinCondition.GAME_OVER,
-  doCountdown = true
+  doCountdown = true,
+  disallowAdjacentColors = true
 }
 
 local TwoPlayerVersus = {
@@ -128,7 +134,8 @@ local TwoPlayerVersus = {
   scene = "OnlineVsGame",
   richPresenceLabel = loc("mm_2_vs"),
   winCondition = WinCondition.GAME_OVER,
-  doCountdown = true
+  doCountdown = true,
+  disallowAdjacentColors = true
 }
 
 GameModes.Styles = Styles

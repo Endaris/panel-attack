@@ -36,7 +36,7 @@ function Player:createStackFromSettings(match, wantsCanvas)
   args.is_local = self.isLocal
   args.panels_dir = self.settings.panelId
   args.character = self.settings.characterId
-  if self.settings.level then
+  if self.settings.style == GameModes.Styles.MODERN then
     args.level = self.settings.level
   else
     args.difficulty = self.settings.difficulty
@@ -163,6 +163,13 @@ function Player:setInputMethod(inputMethod)
   end
 end
 
+function Player:setStyle(style)
+  if style ~= self.settings.style then
+    self.settings.style = style
+    self:onPropertyChanged("style")
+  end
+end
+
 function Player.getLocalPlayer()
   local player = Player(config.name)
 
@@ -174,6 +181,11 @@ function Player.getLocalPlayer()
   player:setPanels(config.panels)
   player:setWantsRanked(config.ranked)
   player:setInputMethod(config.inputMethod)
+  if config.endless_level then
+    player:setStyle(GameModes.Styles.MODERN)
+  else
+    player:setStyle(GameModes.Styles.CLASSIC)
+  end
 
   player.isLocal = true
 

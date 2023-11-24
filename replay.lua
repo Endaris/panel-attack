@@ -26,7 +26,9 @@ function Replay.createNewReplay(match)
   result.stage = match.stageId
   result.gameMode = {
     stackInteraction = battleRoom.mode.stackInteraction,
-    winCondition = battleRoom.mode.winCondition
+    winCondition = battleRoom.mode.winCondition,
+    disallowAdjacentColors = battleRoom.mode.disallowAdjacentColors,
+    timeLimit = battleRoom.mode.timeLimit
   }
 
   result.players = {}
@@ -43,10 +45,11 @@ function Replay.createNewReplay(match)
         inputMethod = player.settings.inputMethod
       }
     }
-    if player.settings.level then
+    if player.settings.style == GameModes.Styles.MODERN then
       result.players[i].settings.level = player.settings.level
     else
       result.players[i].settings.difficulty = player.settings.difficulty
+      result.players[i].settings.speed = player.settings.speed
     end
   end
 
@@ -109,7 +112,7 @@ local function createMatchFromReplay(replay, wantsCanvas)
     end
   else -- if replay.gameMode.stackInteraction == GameModes.StackInteraction.NONE
     if #replay.players == 1 then
-      if replay.timeLimit then
+      if replay.gameMode.timeLimit then
         battleRoom = BattleRoom(GameModes.ONE_PLAYER_TIME_ATTACK, replay)
       else
         battleRoom = BattleRoom(GameModes.ONE_PLAYER_ENDLESS, replay)
@@ -130,14 +133,14 @@ local function createMatchFromReplay(replay, wantsCanvas)
   return match
 end
 
-function Replay.loadFromFile(replay, wantsCanvas)
+function Replay.loadFromFile(replay)
   assert(replay ~= nil)
   if not replay.replayVersion then
     replay = ReplayV1.loadFromFile(replay)
   else
     replay = ReplayV2.loadFromFile(replay)
   end
-  return createMatchFromReplay(replay, wantsCanvas)
+  return createMatchFromReplay(replay)
 end
 
 local function addReplayStatisticsToReplay(match, replay)

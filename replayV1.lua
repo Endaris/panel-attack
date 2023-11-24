@@ -32,7 +32,8 @@ function ReplayV1.loadFromFile(legacyReplay)
   r.stage = v1r.stage
   r.gameMode = {
     stackInteraction = gameMode.stackInteraction,
-    winCondition = gameMode.winCondition
+    winCondition = gameMode.winCondition,
+    disallowAdjacentColors = gameMode.disallowAdjacentColors
   }
 
   if mode == "time" then
@@ -57,9 +58,12 @@ function ReplayV1.loadFromFile(legacyReplay)
 
   if v1r.P1_level then
     r.players[1].settings.level = v1r.P1_level
+    r.players[1].settings.style = GameModes.Styles.MODERN
     --r.players[1].settings.levelData = levelPresets.getModern(v1r.P1_level)
   else
     r.players[1].settings.difficulty = v1r.difficulty
+    r.players[1].settings.speed = v1r.speed
+    r.players[1].settings.style = GameModes.Styles.CLASSIC
     --r.players[1].settings.levelData = levelPresets.getClassic(v1r.difficulty)
     --r.players[1].settings.levelData.startingSpeed = v1r.speed
   end

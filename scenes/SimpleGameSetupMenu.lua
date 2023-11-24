@@ -9,6 +9,7 @@ local Menu = require("ui.Menu")
 local ButtonGroup = require("ui.ButtonGroup")
 local save = require("save")
 local GraphicsUtil = require("graphics_util")
+local GameModes = require("GameModes")
 
 --@module SimpleGameSetupMenu
 -- A Scene that contains menus for basic game configuation (speed, difficulty, level, etc.)
@@ -45,18 +46,15 @@ local BUTTON_HEIGHT = 25
 
 function SimpleGameSetupMenu:startGame()
   play_optional_sfx(themes[config.theme].sounds.menu_validate)
-  config.endless_speed = self.speedSlider.value
-  config.endless_difficulty = self.difficultyButtons.value
+  LocalPlayer:setSpeed(self.speedSlider.value)
+  LocalPlayer:setDifficulty(self.difficultyButtons.value)
   if self.typeButtons.value == "Classic" then
-    config.endless_level = nil
+    LocalPlayer:setStyle(GameModes.Styles.CLASSIC)
   else
-    config.endless_level = self.levelSlider.value
+    LocalPlayer:setStyle(GameModes.Styles.MODERN)
   end
   write_conf_file()
-  GAME.match = GAME.battleRoom:createMatch()
-  GAME.match:start()
-
-  sceneManager:switchToScene(self.gameScene, {match = GAME.match})
+  LocalPlayer:setWantsReady(true)
 end
 
 local function exitMenu()
@@ -194,7 +192,10 @@ function SimpleGameSetupMenu:update(dt)
     self.modernMenu:update()
     self.modernMenu:draw()
   end
-  
+
+  if GAME.battleRoom then
+    GAME.battleRoom:update()
+  end
 end
 
 function SimpleGameSetupMenu:unload() 

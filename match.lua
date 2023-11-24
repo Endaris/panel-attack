@@ -606,11 +606,11 @@ function Match:waitForAssets()
   StageLoader.wait()
 end
 
-function Match:start(replay)
+function Match:start(replay, wantsCanvas)
   self:waitForAssets()
 
   for i = 1, #self.players do
-    local stack = self.players[i]:createStackFromSettings(self, true)
+    local stack = self.players[i]:createStackFromSettings(self, wantsCanvas)
     stack.do_countdown = self.doCountdown
 
     if self.isFromReplay then

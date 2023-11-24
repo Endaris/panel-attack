@@ -55,6 +55,12 @@ BattleRoom =
         self.addPlayer(Player.getLocalPlayer())
       end
     end
+
+    if self.mode.style ~= GameModes.Styles.CHOOSE then
+      for i = 1, #self.players do
+        self.players[i]:setStyle(self.mode.style)
+      end
+    end
   end
 )
 
@@ -178,7 +184,7 @@ function BattleRoom:startMatch(stageId, seed, replayOfMatch)
     match.room_ratings = {}
   end
 
-  match:start(replayOfMatch)
+  match:start(replayOfMatch, true)
 
   replay = Replay.createNewReplay(match)
   GAME.match = match

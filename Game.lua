@@ -16,6 +16,7 @@ local fileUtils = require("FileUtils")
 local handleShortcuts = require("Shortcuts")
 local scenes = nil
 local Player = require("Player")
+local GameModes = require("GameModes")
 require("rich_presence.RichPresence")
 
 -- Provides a scale that is on .5 boundary to make sure it renders well.
@@ -145,6 +146,13 @@ function Game:initializeLocalPlayer()
   LocalPlayer:subscribe("difficulty", function(difficulty) config.endless_difficulty = difficulty end)
   LocalPlayer:subscribe("level", function(level) config.level = level end)
   LocalPlayer:subscribe("wantsRanked", function(wantsRanked) config.ranked = wantsRanked end)
+  LocalPlayer:subscribe("style", function(style)
+    if style == GameModes.Styles.CLASSIC then
+      config.endless_level = nil
+    else
+      config.endless_level = config.level
+    end
+  end)
 end
 
 function Game:createDirectoriesIfNeeded()

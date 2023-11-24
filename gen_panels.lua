@@ -91,13 +91,13 @@ function PanelGenerator.makePanels(seed, ncolors, prev_panels, mode, level, oppo
     return
   end
   local cut_panels = false
-  local disallowAdjacentColors = mode.stackInteraction ~= GameModes.StackInteraction.NONE or level > 7
+  local disallowAdjacentColors = mode.disallowAdjacentColors or (level and level > 7)
 
   if prev_panels == "" then
     ret = "000000"
     rows_to_make = 7
     -- During the initial board we can't allow adjacent colors if the other player can't
-    disallowAdjacentColors = mode.stackInteraction ~= GameModes.StackInteraction.NONE or (level > 7 or (opponentLevel or 1) > 7)
+    disallowAdjacentColors = mode.disallowAdjacentColors or (level or 1) > 7 or (opponentLevel or 1) > 7
     -- isn't this always true???
     -- if mode == "vs" or mode == "endless" or mode == "time" then
     cut_panels = true
