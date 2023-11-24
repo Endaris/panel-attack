@@ -4,7 +4,7 @@ require("util")
 
 local ReplayV1 = {}
 
-function ReplayV1.loadFromFile(legacyReplay, wantsCanvas)
+function ReplayV1.loadFromFile(legacyReplay)
   local r = {}
   local mode
   local gameMode

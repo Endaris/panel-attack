@@ -122,6 +122,7 @@ function GameBase:load(sceneParams)
     self:useCurrentStage()
     pickUseMusicFrom()
   end
+
   self.match = sceneParams.match
   self.S1 = self.match.players[1].stack
   self.S2 = self.match.players[2] and self.match.players[2].stack or nil

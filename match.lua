@@ -550,7 +550,8 @@ function Match.render(self)
       -- Draw VS HUD
       if self.battleRoom then
         if not config.debug_mode then --this is printed in the same space as the debug details
-          gprint(spectators_string, themes[config.theme].spectators_Pos[1], themes[config.theme].spectators_Pos[2])
+          -- TODO: get spectator string from battleRoom
+          --gprint(spectators_string, themes[config.theme].spectators_Pos[1], themes[config.theme].spectators_Pos[2])
         end
 
         self:drawMatchType()

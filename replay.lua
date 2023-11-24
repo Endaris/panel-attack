@@ -133,9 +133,9 @@ end
 function Replay.loadFromFile(replay, wantsCanvas)
   assert(replay ~= nil)
   if not replay.replayVersion then
-    replay = ReplayV1.loadFromFile(replay, wantsCanvas)
+    replay = ReplayV1.loadFromFile(replay)
   else
-    replay = ReplayV2.loadFromFile(replay, wantsCanvas)
+    replay = ReplayV2.loadFromFile(replay)
   end
   return createMatchFromReplay(replay, wantsCanvas)
 end
