@@ -1,5 +1,5 @@
 local GameModes = require("GameModes")
-local Replay = require("replay")
+--local Replay = require("replay")
 require("util")
 
 local ReplayV1 = {}
@@ -95,3 +95,5 @@ function ReplayV1.loadFromFile(replay, wantsCanvas)
 
   return r
 end
+
+return ReplayV1
