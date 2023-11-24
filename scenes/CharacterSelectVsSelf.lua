@@ -1,7 +1,6 @@
 local SelectScreen1LocalPlayer = require("scenes.SelectScreen1LocalPlayer")
 local sceneManager = require("scenes.sceneManager")
 local class = require("class")
-local MatchSetup = require("MatchSetup")
 local GameModes = require("GameModes")
 
 --@module CharacterSelectVsSelf
