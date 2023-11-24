@@ -40,3 +40,5 @@ function Player:createStackFromSettings(wantsCanvas)
 
   return self.stack
 end
+
+return Player

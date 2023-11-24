@@ -1,6 +1,7 @@
 local logger = require("logger")
 local tableUtils = require("tableUtils")
 local GameModes = require("GameModes")
+local sceneManager = require("scenes.sceneManager")
 
 -- A match is a particular instance of the game, for example 1 time attack round, or 1 vs match
 Match =
@@ -12,6 +13,7 @@ Match =
     self.engineVersion = VERSION
     assert(battleRoom)
     self.battleRoom = battleRoom
+    self.mode = battleRoom.mode
     GAME.droppedFrames = 0
     self.timeSpentRunning = 0
     self.maxTimeSpentRunning = 0
@@ -20,8 +22,9 @@ Match =
     self.currentMusicIsDanger = false
     self.seed = math.random(1,9999999)
     self.isFromReplay = false
+    self.doCountdown = true
     self.startTimestamp = os.time(os.date("*t"))
-    if (P2 or battleRoom.mode.stackInteraction == GameModes.stackInteraction.VERSUS) then
+    if (P2 or battleRoom.mode.stackInteraction == GameModes.StackInteraction.VERSUS) then
       GAME.rich_presence:setPresence(
       (battleRoom.spectating and "Spectating" or "Playing") .. " a " .. battleRoom.mode.richPresenceLabel .. " match",
       battleRoom.players[1].name .. " vs " .. (battleRoom.players[2].name),
@@ -52,14 +55,8 @@ function Match:deinit()
   end
 end
 
-function Match:addPlayer(stack)
-  if stack.which == 1 then
-    self.P1 = stack
-  elseif stack.which == 2 then
-    self.P2 = stack
-  end
-  assert(#self.players == stack.which-1, "Player was added to match before previous player")
-  self.players[#self.players+1] = stack
+function Match:addPlayer(player)
+  self.players[#self.players+1] = player
 end
 
 function Match:gameEndedClockTime()
@@ -455,7 +452,7 @@ function Match.render(self)
     gprintf("Max Stack Update: " .. maxTime, drawX, drawY)
 
     drawY = drawY + padding
-    gprintf("Seed " .. GAME.match.seed, drawX, drawY)
+    gprintf("Seed " .. GAME.battleRoom.match.seed, drawX, drawY)
 
     local gameEndedClockTime = self:gameEndedClockTime()
 
@@ -585,11 +582,11 @@ function Match:getInfo()
   info.mode = self.mode
   info.stage = current_stage
   info.stacks = {}
-  if P1 then
-    info.stacks[1] = P1:getInfo()
+  if self.P1 then
+    info.stacks[1] = self.P1:getInfo()
   end
-  if P2 then
-    info.stacks[2] = P2:getInfo()
+  if self.P2 then
+    info.stacks[2] = self.P2:getInfo()
   end
 
   return info
@@ -600,11 +597,44 @@ function Match:waitForAssets()
     local playerSettings = self.players[i].settings
     playerSettings.characterId = CharacterLoader.resolveCharacterSelection()
     CharacterLoader.load(playerSettings.characterId)
+    CharacterLoader.wait()
   end
-
-  CharacterLoader.wait()
 
   self.stage = StageLoader.resolveStageSelection(self.stage)
   StageLoader.load(self.stage)
   StageLoader.wait()
+end
+
+function Match:start()
+  self:waitForAssets()
+
+  for i = 1, #self.players do
+    local stack = self.players[i]:createStackFromSettings(true)
+    stack.do_countdown = self.doCountdown
+
+    if self.isFromReplay then
+      stack:receiveConfirmedInput(replay.players[i].settings.inputs)
+      stack.max_runs_per_frame = 1
+    end
+  end
+
+  if self.battleRoom.mode == GameModes.ONE_PLAYER_VS_SELF then
+    self.players[1].stack:setGarbageTarget(self.players[1].stack)
+  elseif self.battleRoom.mode == GameModes.TWO_PLAYER_VS then
+    self.players[1].stack:setGarbageTarget(self.players[2].stack)
+    self.players[1].stack:setOpponent(self.players[2].stack)
+    self.players[2].stack:setGarbageTarget(self.players[1].stack)
+    self.players[2].stack:setOpponent(self.players[1].stack)
+    self.players[2].stack:moveForPlayerNumber(2)
+  elseif self.battleRoom.mode == GameModes.ONE_PLAYER_TRAINING then
+    local trainingModeSettings = GAME.battleRoom.trainingModeSettings
+    local attackEngine = AttackEngine:createEngineForTrainingModeSettings(trainingModeSettings)
+    attackEngine:setGarbageTarget(self.players[1].stack)
+  end
+
+  for i = 1, #self.players do
+    local pString = "P" .. tostring(i)
+    self[pString] = self.players[i].stack
+    self.players[i].stack:starting_state()
+  end
 end

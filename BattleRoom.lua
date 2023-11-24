@@ -13,13 +13,6 @@ BattleRoom =
     end
 
     self.players = {}
-    -- creating the local player
-    self.players[1] = Player(config.name, 0, self, true)
-    -- create the other players if there are any
-    for i = 2, self.mode.playerCount do
-      self.players[i] = Player(loc("player_n", tostring(i)))
-    end
-
     self.spectators = {}
     self.spectating = false
     self.trainingModeSettings = nil
@@ -55,7 +48,7 @@ function BattleRoom:winningPlayer()
 end
 
 function BattleRoom:createMatch()
-  self.match = Match(self.mode, self)
+  self.match = Match(self)
 
   for i = 1, #self.players do
     self.match:addPlayer(self.players[i])
@@ -64,7 +57,14 @@ function BattleRoom:createMatch()
   return self.match
 end
 
-function BattleRoom:addPlayer(name, publicId, isLocal)
+function BattleRoom:addNewPlayer(name, publicId, isLocal)
   local player = Player(name, publicId, self, isLocal)
+  player.playerNumber = #self.players+1
+  self.players[#self.players+1] = player
+  return player
+end
+
+function BattleRoom:addPlayer(player)
+  player.playerNumber = #self.players+1
   self.players[#self.players+1] = player
 end

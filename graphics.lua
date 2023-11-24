@@ -1,6 +1,7 @@
 require("util")
 local graphicsUtil = require("graphics_util")
 local TouchDataEncoding = require("engine.TouchDataEncoding")
+local GameModes = require("GameModes")
 
 local floor = math.floor
 local ceil = math.ceil
@@ -721,7 +722,7 @@ function Stack.render(self)
 
   local function drawMoveCount()
     -- draw outside of stack's frame canvas
-    if self.match.mode == "puzzle" then
+    if self.match.mode == GameModes.ONE_PLAYER_PUZZLE then
       self:drawLabel(self.theme.images.IMG_moves, self.theme.moveLabel_Pos, self.theme.moveLabel_Scale, false, true)
       local moveNumber = math.abs(self.puzzle.remaining_moves)
       if self.puzzle.puzzleType == "moves" then
@@ -909,7 +910,7 @@ function Stack.render(self)
   drawMoveCount()
   -- Draw the "extra" game info
   if config.show_ingame_infos then
-    if self.match.mode ~= "puzzle" then
+    if self.match.mode ~= GameModes.ONE_PLAYER_PUZZLE then
       drawScore()
       drawSpeed()
     end
@@ -929,7 +930,7 @@ function Stack.render(self)
 end
 
 function Stack:drawPlayerName()
-  local username = (self.match.battleRoom.playerNames[self.which] or "")
+  local username = (self.match.players[self.which].name or "")
   self:drawString(username, self.theme.name_Pos, true, self.theme.name_Font_Size)
 end
 
@@ -939,7 +940,7 @@ function Stack:drawWinCount()
   end
 
   self:drawLabel(self.theme.images.IMG_wins, self.theme.winLabel_Pos, self.theme.winLabel_Scale, true)
-  self:drawNumber(self.match.battleRoom.players[self.player_number].getWinCount(), self.wins_quads, self.theme.win_Pos, self.theme.win_Scale, true)
+  self:drawNumber(self.match.battleRoom.players[self.player_number]:getWinCount(), self.wins_quads, self.theme.win_Pos, self.theme.win_Scale, true)
 end
 
 function Stack:drawRating()
@@ -1017,7 +1018,7 @@ function Stack:drawMultibar()
   local shake_time = self.shake_time
 
   -- before the first move, display the stop time from the puzzle, not the stack
-  if self.match.mode == "puzzle" and self.puzzle.puzzleType == "clear" and self.puzzle.moves == self.puzzle.remaining_moves then
+  if self.match.mode == GameModes.ONE_PLAYER_PUZZLE and self.puzzle.puzzleType == "clear" and self.puzzle.moves == self.puzzle.remaining_moves then
     stop_time = self.puzzle.stop_time
     shake_time = self.puzzle.shake_time
   end

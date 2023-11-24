@@ -119,7 +119,7 @@ local function createMatchFromReplay(replay, wantsCanvas)
     end
   end
 
-  for i = 1, replay.players do
+  for i = 1, #replay.players do
     local rpp = replay.players[i]
     local player = Player(rpp.name, rpp.publicId, battleRoom)
     player.playerNumber = i
@@ -130,41 +130,16 @@ local function createMatchFromReplay(replay, wantsCanvas)
     player.settings.level = rpp.settings.level
     player.settings.difficulty = rpp.settings.difficulty
     --player.settings.levelData = rpp.settings.levelData
-    battleRoom.players[i] = player
+    battleRoom:addPlayer(player)
   end
-  
+
+  GAME.battleRoom = battleRoom
   local match = battleRoom:createMatch()
-  
+
   match.isFromReplay = true
+  match.doCountdown = replay.doCountdown
   match.seed = replay.seed
   match.stage = StageLoader.resolveStageSelection(replay.stage)
-
-  for i = 1, #match.players do
-    local stack = match.players[i].createStackFromSettings()
-    stack:receiveConfirmedInput(replay.players[i].settings.inputs)
-    stack.do_countdown = replay.doCountdown or false
-    stack.max_runs_per_frame = 1
-  end
-
-  if battleRoom.mode == GameModes.ONE_PLAYER_VS_SELF then
-    match.players[1].stack:setGarbageTarget(match.players[1].stack)
-  elseif battleRoom.mode == GameModes.TWO_PLAYER_VS then
-    match.players[1].stack:setGarbageTarget(match.players[2].stack)
-    match.players[1].stack:setOpponent(match.players[2].stack)
-    match.players[2].stack:setGarbageTarget(match.players[1].stack)
-    match.players[2].stack:setOpponent(match.players[1].stack)
-    match.players[2].stack:moveForPlayerNumber(2)
-  elseif battleRoom.mode == GameModes.ONE_PLAYER_TRAINING then
-    local trainingModeSettings = GAME.battleRoom.trainingModeSettings
-    local attackEngine = AttackEngine:createEngineForTrainingModeSettings(trainingModeSettings)
-    attackEngine:setGarbageTarget(match.players[1].stack)
-  end
-
-  match:waitForAssets()
-
-  for i = 1, #match.players do
-    match.players[i].stack:starting_state()
-  end
 
   return match
 end
@@ -176,7 +151,7 @@ function Replay.loadFromFile(replay, wantsCanvas)
   else
     replay = ReplayV2.loadFromFile(replay, wantsCanvas)
   end
-  createMatchFromReplay(replay, wantsCanvas)
+  return createMatchFromReplay(replay, wantsCanvas)
 end
 
 local function addReplayStatisticsToReplay(match, replay)

@@ -4,26 +4,26 @@ require("util")
 
 local ReplayV1 = {}
 
-function ReplayV1.loadFromFile(replay, wantsCanvas)
+function ReplayV1.loadFromFile(legacyReplay, wantsCanvas)
   local r = {}
   local mode
   local gameMode
-  if replay.vs then
+  if legacyReplay.vs then
     mode = "vs"
-    if replay.vs.P2_char then
+    if legacyReplay.vs.P2_char then
       gameMode = GameModes.TWO_PLAYER_VS
     else
       gameMode = GameModes.ONE_PLAYER_VS_SELF
     end
-  elseif replay.time then
+  elseif legacyReplay.time then
     mode = "time"
     gameMode = GameModes.ONE_PLAYER_TIME_ATTACK
-  elseif replay.endless then
+  elseif legacyReplay.endless then
     mode = "endless"
     gameMode = GameModes.ONE_PLAYER_ENDLESS
   end
-  local v1r = replay[mode]
-  r.engineVersion = replay.engineVersion
+  local v1r = legacyReplay[mode]
+  r.engineVersion = legacyReplay.engineVersion
   -- not saved in v1
   r.replayVersion = 1
   r.seed = v1r.seed
@@ -92,6 +92,9 @@ function ReplayV1.loadFromFile(replay, wantsCanvas)
       r.duration = math.min(string.len(r.players[1].settings.inputs), string.len(r.players[2].settings.inputs))
     end
   end
+
+  -- done, overwrite the global so none has to deal with the old format!
+  replay = r
 
   return r
 end

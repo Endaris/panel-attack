@@ -124,7 +124,9 @@ function GameBase:load(sceneParams)
   end
   self:customLoad(sceneParams)
   -- TODO: move replay creation to child classes of GameBase
-  replay = Replay.createNewReplay(GAME.match)
+  if not GAME.battleRoom.match.isFromReplay then
+    replay = Replay.createNewReplay(GAME.battleRoom.match)
+  end
   self:initializeFrameInfo()
 end
 
@@ -146,7 +148,7 @@ function GameBase:drawBackground()
 end
 
 function GameBase:handlePause()
-  if GAME.match.supportsPause and (input.isDown["MenuPause"] or (not GAME.focused and not GAME.gameIsPaused)) then
+  if GAME.battleRoom.match.supportsPause and (input.isDown["MenuPause"] or (not GAME.focused and not GAME.gameIsPaused)) then
     if GAME.gameIsPaused then
       self:initializeFrameInfo()
     end
@@ -222,7 +224,7 @@ function GameBase:runGameOver()
     end
   end
 
-  GAME.match:run()
+  GAME.battleRoom.match:run()
 
 
   if network_connected() then
@@ -243,7 +245,7 @@ function GameBase:runGameOver()
     sceneManager:switchToScene(self.nextScene, self.nextSceneParams)
   end
   
-  GAME.gfx_q:push({GAME.match.render, {GAME.match}})
+  GAME.gfx_q:push({GAME.battleRoom.match.render, {GAME.battleRoom.match}})
 end
 
 function GameBase:runGame(dt)
@@ -262,7 +264,7 @@ function GameBase:runGame(dt)
       abort = true
       break
     end
-    GAME.match:run()
+    GAME.battleRoom.match:run()
   until (self.frameInfo.frameCount >= self.frameInfo.expectedFrameCount)
   if abort then
     return
@@ -272,7 +274,7 @@ function GameBase:runGame(dt)
     GAME.droppedFrames = GAME.droppedFrames + framesRun - 1
   end
   
-  if not ((GAME.match.P1 and GAME.match.P1.play_to_end) or (GAME.match.P2 and GAME.match.P2.play_to_end)) then
+  if not ((GAME.battleRoom.match.players[1].stack and GAME.battleRoom.match.players[1].stack.play_to_end) or (GAME.battleRoom.match.players[2] and GAME.battleRoom.match.players[2].stack.play_to_end)) then
     self:handlePause()
 
     if GAME.gameIsPaused and input.isDown["MenuEsc"] then
@@ -286,21 +288,21 @@ function GameBase:runGame(dt)
     return
   end
   
-  if GAME.match.P1:gameResult() then
-    GAME.gfx_q:push({GAME.match.render, {GAME.match}})
+  if GAME.battleRoom.match.players[1].stack:gameResult() then
+    GAME.gfx_q:push({GAME.battleRoom.match.render, {GAME.battleRoom.match}})
     self:setupGameOver()
     return
   end
   
   -- Render only if we are not catching up to a current spectate match
-  if not (GAME.match.P1 and GAME.match.P1.play_to_end) and not (GAME.match.P2 and GAME.match.P2.play_to_end) then
-    GAME.gfx_q:push({GAME.match.render, {GAME.match}})
+  if not (GAME.battleRoom.match.players[1].stack and GAME.battleRoom.match.players[1].stack.play_to_end) and not (GAME.battleRoom.match.players[2].stack and GAME.battleRoom.match.players[2].stack.play_to_end) then
+    GAME.gfx_q:push({GAME.battleRoom.match.render, {GAME.battleRoom.match}})
     self:customDraw()
   end
 end
 
 function GameBase:update(dt)
-  if GAME.match.P1:gameResult() then
+  if GAME.battleRoom.match.players[1].stack:gameResult() then
     self:runGameOver()
   else
     self:runGame(dt)
@@ -308,11 +310,11 @@ function GameBase:update(dt)
 end
 
 function GameBase:unload()
-  local gameResult = GAME.match.P1:gameResult()
+  local gameResult = GAME.battleRoom.match.P1:gameResult()
   if gameResult then
     self:processGameResults(gameResult)
   end
-  analytics.game_ends(GAME.match.P1.analytic)
+  analytics.game_ends(GAME.battleRoom.match.P1.analytic)
   GAME:clearMatch()
 end
 

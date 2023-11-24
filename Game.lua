@@ -421,8 +421,8 @@ function Game.errorData(errorString, traceBack)
       theme = config.theme
     }
 
-  if GAME.match then
-    errorData.matchInfo = GAME.match:getInfo()
+  if GAME.battleRoom and GAME.battleRoom.match then
+    errorData.matchInfo = GAME.battleRoom.match:getInfo()
   end
 
   return errorData
@@ -446,7 +446,7 @@ function Game.detailedErrorLogString(errorData)
 
     if errorData.matchInfo then
       detailedErrorLogString = detailedErrorLogString .. newLine ..
-      errorData.matchInfo.mode .. " Match Info: " .. newLine ..
+      errorData.matchInfo.mode.scene .. " Match Info: " .. newLine ..
       "  Stage: " .. errorData.matchInfo.stage .. newLine ..
       "  Stacks: "
       for i = 1, #errorData.matchInfo.stacks do

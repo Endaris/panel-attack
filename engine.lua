@@ -59,16 +59,16 @@ Stack =
       s.panels_dir = config.panels
     end
 
-    if s.match.mode == "puzzle" then
+    if s.match.mode == GameModes.ONE_PLAYER_PUZZLE then
       s.drawsAnalytics = false
     else
       s.do_first_row = true
     end
 
     if difficulty then
-      if s.match.mode == "endless" then
+      if s.match.mode == GameModes.ONE_PLAYER_ENDLESS then
         s.NCOLORS = difficulty_to_ncolors_endless[difficulty]
-      elseif s.match.mode == "time" then
+      elseif s.match.mode == GameModes.ONE_PLAYER_TIME_ATTACK then
         s.NCOLORS = difficulty_to_ncolors_1Ptime[difficulty]
       end
     end
@@ -220,7 +220,7 @@ Stack =
     s.cur_col = 3 -- the column the left half of the cursor's on
     s.queuedSwapColumn = 0 -- the left column of the two columns to swap or 0 if no swap queued
     s.queuedSwapRow = 0 -- the row of the queued swap or 0 if no swap queued
-    s.top_cur_row = s.height + (s.match.mode == "puzzle" and 0 or -1)
+    s.top_cur_row = s.height + (s.match.mode == GameModes.ONE_PLAYER_PUZZLE and 0 or -1)
 
     s.poppedPanelIndex = s.poppedPanelIndex or 1
     s.panels_cleared = s.panels_cleared or 0
@@ -670,11 +670,11 @@ function Stack.rollbackToFrame(self, frame)
 end
 
 function Stack:shouldSaveRollback()
-  if not GAME.match then
+  if not self.match then
     return false
   end
 
-  if GAME.match.isFromReplay then
+  if self.match.isFromReplay then
     return true
   end
 
@@ -1249,7 +1249,7 @@ function Stack.updateDangerBounce(self)
     end
   end
   if self.danger then
-    if self.panels_in_top_row and self.speed ~= 0 and self.match.mode ~= "puzzle" then
+    if self.panels_in_top_row and self.speed ~= 0 and self.match.mode ~= GameModes.ONE_PLAYER_PUZZLE then
       -- Player has topped out, panels hold the "flattened" frame
       self.danger_timer = 15
     elseif self.stop_time == 0 then
@@ -1264,7 +1264,7 @@ end
 -- Changed this to play danger when something in top 3 rows
 -- and to play normal music when nothing in top 3 or 4 rows
 function Stack.shouldPlayDangerMusic(self)
-  if self.match.mode == "time" then
+  if self.match.mode == GameModes.ONE_PLAYER_TIME_ATTACK then
     if self.game_stopwatch > TIME_ATTACK_TIME * 60 - 900 --[[15 seconds assuming 60 FPS]] then
       return true
     end
@@ -1389,7 +1389,7 @@ function Stack.simulate(self)
     -- Phase 0 //////////////////////////////////////////////////////////////
     -- Stack automatic rising
     if self.speed ~= 0 and not self.manual_raise and self.stop_time == 0 and not self.rise_lock then
-      if self.match.mode == "puzzle" then
+      if self.match.mode == GameModes.ONE_PLAYER_PUZZLE then
         -- only reduce health after the first swap to give the player a chance to strategize
         if self.puzzle.puzzleType == "clear" and self.puzzle.remaining_moves - self.puzzle.moves < 0 and self.shake_time < 1 then
           self.health = self.health - 1
@@ -1402,7 +1402,7 @@ function Stack.simulate(self)
             self:set_game_over()
           end
         else
-          if self.match.mode ~= "puzzle" then
+          if self.match.mode ~= GameModes.ONE_PLAYER_PUZZLE then
             self.rise_timer = self.rise_timer - 1
             if self.rise_timer <= 0 then -- try to rise
               self.displacement = self.displacement - 1
@@ -1418,7 +1418,7 @@ function Stack.simulate(self)
       end
     end
 
-    if not self.panels_in_top_row and self.match.mode ~= "puzzle" and not self:has_falling_garbage() then
+    if not self.panels_in_top_row and self.match.mode ~= GameModes.ONE_PLAYER_PUZZLE and not self:has_falling_garbage() then
       self.health = self.max_health
     end
 
@@ -1501,7 +1501,7 @@ function Stack.simulate(self)
     end
 
     -- MANUAL STACK RAISING
-    if self.manual_raise and self.match.mode ~= "puzzle" then
+    if self.manual_raise and self.match.mode ~= GameModes.ONE_PLAYER_PUZZLE then
       if not self.rise_lock then
         if self.panels_in_top_row then
           self:set_game_over()
@@ -1619,7 +1619,7 @@ function Stack.simulate(self)
       else
         local winningPlayer = self
         if GAME.battleRoom then
-          winningPlayer = GAME.battleRoom:winningPlayer(GAME.match.P1, GAME.match.P2).stack
+          winningPlayer = GAME.battleRoom:winningPlayer().stack
         end
 
         local musics_to_use = nil
@@ -1707,7 +1707,7 @@ function Stack.simulate(self)
     end
 
     -- In time attack, play countdown sound every second when there's 15 seconds left
-    if  self.match.mode == "time" and 
+    if  self.match.mode == GameModes.ONE_PLAYER_TIME_ATTACK and 
         self.game_stopwatch and 
         self.game_stopwatch >= TIME_ATTACK_TIME * 60 - 900 and 
         self.game_stopwatch % 60 == 0 and 
@@ -1725,7 +1725,7 @@ function Stack.simulate(self)
       end
       if SFX_Cur_Move_Play == 1 then
         -- I have no idea why this makes a distinction for vs, like what?
-        if not (self.match.mode.matchMode == "vs" and self.theme.sounds.swap:isPlaying()) and not self.do_countdown then
+        if not (self.match.mode.stackInteraction ~= GameModes.StackInteraction.NONE and self.theme.sounds.swap:isPlaying()) and not self.do_countdown then
           self.theme.sounds.cur_move:stop()
           self.theme.sounds.cur_move:play()
         end
