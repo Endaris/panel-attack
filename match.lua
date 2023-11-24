@@ -632,9 +632,10 @@ function Match:start(replay, wantsCanvas)
     for i = 1, #self.players do
       for j = 1, #self.players do
         if i ~= j then
-          -- once we have more than 2P in a single mode, setGarbageTarget needs to put these into an array
+          -- once we have more than 2P in a single mode, setGarbageTarget/setOpponent needs to put these into an array
           -- or we rework it anyway for team play
           self.players[i].stack:setGarbageTarget(self.players[j].stack)
+          self.players[i].stack:setOpponent(self.players[j].stack)
         end
       end
     end

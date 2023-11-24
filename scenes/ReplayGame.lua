@@ -6,8 +6,6 @@ local util = require("util")
 local Replay = require("replay")
 local class = require("class")
 
-local match
-
 --@module replayGame
 local ReplayGame = class(
   function (self, sceneParams)
@@ -88,8 +86,8 @@ function ReplayGame:customGameOverSetup()
   self.nextScene = "ReplayBrowser"
   self.nextSceneParams = nil
 
-  if self.match.P2 and match:getOutcome() then
-    local matchOutcome = match:getOutcome()
+  if self.match.P2 and self.match:getOutcome() then
+    local matchOutcome = self.match:getOutcome()
     self.text = matchOutcome["end_text"]
     self.winner_SFX = matchOutcome["winSFX"]
   else
