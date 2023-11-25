@@ -6,8 +6,22 @@ local TouchDataEncoding = require("engine.TouchDataEncoding")
 local floor = math.floor
 local ceil = math.ceil
 
+local function shakeCycleArrayForFrames(frames)
+  local shakeCycleFrames = {}
+  local remainingFrames = frames
+  while remainingFrames > 0 do
+    if remainingFrames >= 12 then
+      shakeCycleFrames[#shakeCycleFrames+1] = 12
+      remainingFrames = remainingFrames - 12
+    else 
+      shakeCycleFrames[#shakeCycleFrames+1] = remainingFrames
+      remainingFrames = 0
+    end
+  end
+  return shakeCycleFrames
+end
 
-function calculateShakeData(maxShakeFrames, startingMultiplier)
+local function calculateShakeData(maxShakeFrames, startingMultiplier)
   local shakeData = {}
   shakeData.maxFrames = maxShakeFrames
   shakeData.offsets = {}
@@ -55,21 +69,6 @@ function calculateShakeData(maxShakeFrames, startingMultiplier)
   return shakeData
 end
 
-function shakeCycleArrayForFrames(frames)
-  local shakeCycleFrames = {}
-  local remainingFrames = frames
-  while remainingFrames > 0 do
-    if remainingFrames >= 12 then
-      shakeCycleFrames[#shakeCycleFrames+1] = 12
-      remainingFrames = remainingFrames - 12
-    else 
-      shakeCycleFrames[#shakeCycleFrames+1] = remainingFrames
-      remainingFrames = 0
-    end
-  end
-  return shakeCycleFrames
-end
-
 -- returns the maximum offset for the indexed maximum shake
 local MAX_SHAKE_TO_MAX_OFFSET = {}
 setmetatable(MAX_SHAKE_TO_MAX_OFFSET, {__index = function(self, index)
@@ -82,7 +81,7 @@ setmetatable(MAX_SHAKE_TO_MAX_OFFSET, {__index = function(self, index)
     return 9
   elseif index <= 66 then
     return 15
-  elseif index > 76 then
+  elseif index >= 76 then
     return 17
   end
 end})
@@ -111,19 +110,22 @@ function Stack:shakeOffsetForShakeFrames(frames, maxShakeFrames)
     return 0
   end
 
-  if not self:currentShakeOffset() then
+  if not self.shakeAnimationOffsets then
     -- no shake yet
     local shakeData = calculateShakeData(maxShakeFrames)
-    self:setShakeData(shakeData, frames)
+    self:setShakeData(shakeData.offsets, frames)
   else    
     if frames ~= self.shakeAnimationFrame - 1 then
       -- shake was changed, recalculate:
-      local shakeData = calculateShakeData(maxShakeFrames, self:currentShakeOffset())
-      self:setShakeData(shakeData, frames)
+      local shakeData = calculateShakeData(maxShakeFrames, self:getCurrentShakeAnimationMultiplier())
+      self:setShakeData(shakeData.offsets, frames)
     -- else still on the same shake
     end
   end
 
+  if not self.shakeAnimationOffsets[frames] then
+    local phi = 5
+  end
   local offset = math.round(self.shakeAnimationOffsets[frames], 4)
 
   local maxAmplitude = MAX_SHAKE_TO_MAX_OFFSET[maxShakeFrames]
