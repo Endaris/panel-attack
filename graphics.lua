@@ -7,7 +7,7 @@ local floor = math.floor
 local ceil = math.ceil
 
 
-function calculateShakeData(maxShakeFrames, maxAmplitude)
+function calculateShakeData(maxShakeFrames, startingMultiplier)
   local shakeData = {}
   shakeData.maxFrames = maxShakeFrames
   shakeData.offsets = {}
@@ -17,8 +17,32 @@ function calculateShakeData(maxShakeFrames, maxAmplitude)
   local insertIndex = 0
   for currentCycle = 1, #shakeCycleFrames do
     local cycleLength = shakeCycleFrames[currentCycle]
-    local x = math.pi / 2
-    local step = math.pi * 2 / cycleLength
+    local step
+    if currentCycle < #shakeCycleFrames then
+      step = math.pi * 2 / cycleLength
+    else
+      step = math.pi * 2 / cycleLength * (1 - (1 / shakeCycleFrames[1]))
+    end
+    local x
+    if not startingMultiplier then
+      x = math.pi / 2 + step
+    else
+      x = math.acos(startingMultiplier)
+      if currentCycle == #shakeCycleFrames then
+        -- if this is the last cycle, we need to get to (2n + 1) pi / 2 with our last frame
+        -- x is definitely below 2 pi on initialisation
+        -- let's try to move more than 1 pi but less than 2 pi to get there
+        local rest = x % math.pi
+        local length
+        if rest < (math.pi / 2) then
+          length = 1.5 * math.pi - rest
+        else
+          length = 2.5 * math.pi - rest
+        end
+        step = length / cycleLength
+      end
+      x = x + step
+    end
     for j = 1, cycleLength do
       local cosX = math.cos(x)
       shakeData.offsets[insertIndex] = cosX
@@ -28,17 +52,6 @@ function calculateShakeData(maxShakeFrames, maxAmplitude)
   end
   shakeData.offsets[insertIndex] = 0
 
-  if config.shakeReduction > 1 then
-    maxAmplitude = maxAmplitude / config.shakeReduction
-  end
-  
-  local shake_step = maxAmplitude / (#shakeData.offsets - 1)
-  local shake_mult = maxAmplitude
-  for i = 0, #shakeData.offsets do
-    shakeData.offsets[i] = ceil(math.round(shakeData.offsets[i], 4) * shake_mult)
-    -- print(shakeData.offsets[i])
-    shake_mult = shake_mult - shake_step
-  end
   return shakeData
 end
 
@@ -57,12 +70,33 @@ function shakeCycleArrayForFrames(frames)
   return shakeCycleFrames
 end
 
-local shakeOffsetData = {}
-shakeOffsetData[#shakeOffsetData+1] = calculateShakeData(76, 17)
-shakeOffsetData[#shakeOffsetData+1] = calculateShakeData(66, 15)
-shakeOffsetData[#shakeOffsetData+1] = calculateShakeData(42, 9)
-shakeOffsetData[#shakeOffsetData+1] = calculateShakeData(24, 5)
-shakeOffsetData[#shakeOffsetData+1] = calculateShakeData(18, 4)
+-- returns the maximum offset for the indexed maximum shake
+local MAX_SHAKE_TO_MAX_OFFSET = {}
+setmetatable(MAX_SHAKE_TO_MAX_OFFSET, {__index = function(self, index)
+  assert(type(index) == "number")
+  if index <= 18 then
+    return 4
+  elseif index <= 24 then
+    return 5
+  elseif index <= 42 then
+    return 9
+  elseif index <= 66 then
+    return 15
+  elseif index > 76 then
+    return 17
+  end
+end})
+
+function Stack:setShakeData(shakeData, shakeFrame)
+  self.shakeAnimationOffsets = shakeData
+  self.shakeAnimationFrame = shakeFrame
+end
+
+function Stack:getCurrentShakeAnimationMultiplier()
+  if self.shakeAnimationOffsets then
+    return self.shakeAnimationOffsets[self.shakeAnimationFrame]
+  end
+end
 
 function Stack:currentShakeOffset()
   return self:shakeOffsetForShakeFrames(self.shake_time, self.peak_shake_time)
@@ -71,19 +105,33 @@ end
 function Stack:shakeOffsetForShakeFrames(frames, maxShakeFrames)
   assert(frames <= maxShakeFrames)
   if frames <= 0 then
+    if self.shakeAnimationOffsets then
+      self:setShakeData(nil, 0)
+    end
     return 0
   end
 
-  for _, shakeData in ipairs(shakeOffsetData) do
-    local maxFrames = shakeData.maxFrames
-    if maxFrames <= maxShakeFrames then
-      local offsetData = shakeData.offsets
-      local lookupIndex = #offsetData - frames
-      return offsetData[lookupIndex] or 0
+  if not self:currentShakeOffset() then
+    -- no shake yet
+    local shakeData = calculateShakeData(maxShakeFrames)
+    self:setShakeData(shakeData, frames)
+  else    
+    if frames ~= self.shakeAnimationFrame - 1 then
+      -- shake was changed, recalculate:
+      local shakeData = calculateShakeData(maxShakeFrames, self:currentShakeOffset())
+      self:setShakeData(shakeData, frames)
+    -- else still on the same shake
     end
   end
-  assert(false, "couldn't find shake data for total shake of " .. maxShakeFrames)
-  return 0
+
+  local offset = math.round(self.shakeAnimationOffsets[frames], 4)
+
+  local maxAmplitude = MAX_SHAKE_TO_MAX_OFFSET[maxShakeFrames]
+  if config.shakeReduction > 1 then
+    maxAmplitude = maxAmplitude / config.shakeReduction
+  end
+  local amplitude = maxAmplitude * frames / maxShakeFrames
+  return ceil(offset * amplitude)
 end
 
 -- Provides the X origin to draw an element of the stack
