@@ -81,6 +81,7 @@ Panels =
     -- sprite sheets indexed by color
     self.colors = {}
     self.animations = {}
+    self.size = 16
   end
 )
 
@@ -190,27 +191,24 @@ function Panels:load()
     return img
   end
   -- colors 1-7 are normal colors, 8 is [!], 9 is an empty panel.
-  self.images.classic = {}
   local sheet = nil
   local panelSet = nil
   local panelConverts = {}
   local oldFormat = not love.filesystem.getInfo(self.path.."/".."panels.png")
   if (oldFormat or (not self.sheet)) then
     if oldFormat then
-      local draw = love.graphics.draw
-      local newCanvas = love.graphics.newCanvas
       for i = 1, 9 do
         local img = load_panel_img("panel"..(i ~= 9 and tostring(i).."1" or "00"))
         local width, height = img:getDimensions()
         local newPanel = "panel-"..tostring(i ~= 9 and tostring(i) or "0")
         self.animations[newPanel].size = {width = width, height = width}
         if i ~= 9 then
-          local tempCanvas = newCanvas(width*6, height*8)
+          local tempCanvas = love.graphics.newCanvas(width*6, height*8)
           tempCanvas:renderTo(function()
               for row, anim in ipairs(PANEL_ANIM_CONVERTS) do
                 for count, frame in ipairs(anim) do
                   img = load_panel_img("panel" .. tostring(i) .. tostring(frame))
-                  draw(img, width*(count-1), height*(row-1))
+                  love.graphics.draw(img, width*(count-1), height*(row-1))
                 end
               end
             end
@@ -229,14 +227,14 @@ function Panels:load()
         local img = load_panel_img(metal_oldnames[i])
         local width, height = img:getDimensions()
         self.animations[newPanel].size = {width = width, height = height}
-        local tempCanvas = newCanvas(i ~= 4 and width or width*2, height)
+        local tempCanvas = love.graphics.newCanvas(i ~= 4 and width or width*2, height)
         tempCanvas:renderTo(function()
             if i ~= 4 then
-              draw(img, 0, 0)   
+              love.graphics.draw(img, 0, 0)
             else
-              draw(load_panel_img("metalend0"), 0, 0)
-              draw(load_panel_img("metalend1"), width/2, 0)
-              draw(img, width, 0)
+              love.graphics.draw(load_panel_img("metalend0"), 0, 0)
+              love.graphics.draw(load_panel_img("metalend1"), width/2, 0)
+              love.graphics.draw(img, width, 0)
             end
           end
         )
