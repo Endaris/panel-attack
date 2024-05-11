@@ -2,118 +2,79 @@ require("graphics_util")
 require("graphics.animated_sprite")
 local logger = require("logger")
 local tableUtils = require("tableUtils")
---defaults: {frames = 1, row = 1, fps = 30, loop = true}
-local DEFAULT_PANEL_ANIM =
-{
-	size =  16,
-	normal = {},
-	swappingLeft = {},
-	swappingRight = {},
-	matched = {row = 4}, 
-	popping = {row = 4},
-	hover = {},
-	falling = {frames= 2, row = 2},
-	landing = {frames= 4, row = 7, fps = 20, loop = false},
-	danger = {frames= 6, row = 3, fps = 20},
-	panic = {row = 7},
-	dead = {row = 4},
-	flash = {frames= 2},
-	dimmed = {row = 5}, 
-	fromGarbage = {frames= 4, row = 6, fps = 20}
-}
-local BLANK_PANEL_ANIM =
-{
-	size = 16,
-	normal = {},
-	swappingLeft = {},
-	swappingRight = {},
-	matched = {},
-	popping = {},
-	hover = {},
-	falling = {},
-	landing = {},
-	danger = {},
-	panic = {},
-	dead = {},
-	flash = {},
-	dimmed = {},
-	fromGarbage = {}
-}
-local METAL_PANEL_ANIM =
-{
-	size = {["width"] = 8,["height"] = 16},
-	normal = {},
-	falling = {},
-	landing = {},
-	danger = {},
-	panic = {},
-	dead = {}
-}
 local fileUtils = require("FileUtils")
 local GraphicsUtil = require("graphics_util")
 
-local METAL_FLASH_PANEL_ANIM =
-{
-	size = 16,
-	flash = {frames = 2},
-	matched = {},
-	popping = {},
+local ANIMATION_STATES = {
+  "normal", "landing", "swapping",
+  "flash", "face", "popping",
+  "hovering", "falling",
+  "dimmed", "dead",
+  "danger", "panic",
+  "garbageBounce"
 }
-local PANEL_ANIM_CONVERTS =
+local DEFAULT_PANEL_ANIM =
 {
-	{1,5},
-	{2,3},
-	{1,2,3,2,1,4},
-	{6},
-	{7},
-	{2,3,4,1},
-	{4,3,2,1}
+  -- loops
+	normal = {frames = {1}},
+  -- doesn't loop, fixed duration of 12 frames
+	landing = {frames = {4, 3, 2, 1}, durationPerFrame = 3},
+  -- doesn't loop, fixed duration of 4 frames
+  swapping = {frames = {1}},
+  -- loops
+	flash = {frames = {5, 1}},
+  -- doesn't loop
+  face = {frames = {6}},
+  -- doesn't loop
+	popping = {frames = {6}},
+  -- doesn't loop
+	hovering = {frames = {1}},
+  -- doesn't loop
+	falling = {frames = {1}},
+  -- loops
+  dimmed = {frames = {7}},
+  -- doesn't loop
+	dead = {frames = {6}},
+  -- loops; frames play back to front
+  -- danger is special in that there is a frame offset depending on column offset
+  -- col 1 and 2 start on frame 3, col 3 and 4 start on frame 4 and col 5 and 6 start on frame 5 of the animation
+	danger = {frames = {1, 2, 3, 2, 1, 4}, durationPerFrame = 3},
+  -- loops
+  panic = {frames = {4}},
+  -- doesn't loop; the frames play back to front, fixed to 12 frames
+	garbageBounce = {frames = {2, 3, 4, 1}, durationPerFrame = 3},
 }
 
-local metal_names = {"garbage-L", "garbage-M", "garbage-R", "garbage-flash"}
 -- The class representing the panel image data
 -- Not to be confused with "Panel" which is one individual panel in the game stack model
 Panels =
   class(
   function(self, full_path, folder_name)
     self.path = full_path -- string | path to the panels folder content
-    self.id = folder_name -- string | id of the panel set, is also the name of its folder by default, may change in id_init
+    self.id = folder_name -- string | id of the panel set, is also the name of its folder by default, may change in json_init
     self.sheet = false
     self.images = {}
     -- sprite sheets indexed by color
-    self.colors = {}
-    self.animations = {}
+    self.sheets = {}
+    -- mapping each animation state to a row on the sheet
+    self.sheetConfig = {}
+    self.batches = {}
     self.size = 16
   end
 )
 
-function Panels:id_init()
-  local read_data = {}
-  local config_file, err = love.filesystem.newFile(self.path .. "/config.json", "r")
-  if config_file then
-    local teh_json = config_file:read(config_file:getSize())
-    config_file:close()
-    for k, v in pairs(json.decode(teh_json)) do
-      read_data[k] = v
+function Panels:json_init()
+  local read_data = fileUtils.readJsonFile(self.path .. "/config.json")
+  if read_data then
+    if read_data.id then
+      self.id = read_data.id
+
+      self.name = read_data.name or self.id
+      self.type = read_data.type or "single"
+      self.animationConfig = read_data.animationConfig or DEFAULT_PANEL_ANIM
+
+      return true
     end
-  end
-
-  if read_data.sheet then
-    self.sheet = read_data.sheet
-  end
-
-  for i = 0, 12 do
-    local name = (i < 9 and "panel-"..tostring(i) or metal_names[i-8])
-    if read_data.animations and read_data.animations[name] then
-      self.animations[name] = read_data.animations[name]
-    else
-      self.animations[name] = i ~= 0 and (i < 9 and DEFAULT_PANEL_ANIM or (i ~= 12 and METAL_PANEL_ANIM or METAL_FLASH_PANEL_ANIM)) or BLANK_PANEL_ANIM
-    end
-  end
-
-  if read_data.id then
-    self.id = read_data.id
-    return true
   end
 
   return false
@@ -125,13 +86,13 @@ local function add_panels_from_dir_rec(path)
   local raw_dir_list = fileUtils.getFilteredDirectoryItems(path)
   for i, v in ipairs(raw_dir_list) do
     local current_path = path .. "/" .. v
-    if lfs.getInfo(current_path) and lfs.getInfo(current_path).type == "directory" then
+    if lfs.getInfo(current_path, "directory") then
       -- call recursively: facade folder
       add_panels_from_dir_rec(current_path)
 
       -- init stage: 'real' folder
       local panel_set = Panels(current_path, v)
-      local success = panel_set:id_init()
+      local success = panel_set:json_init()
 
       if success then
         if panels[panel_set.id] ~= nil then
@@ -150,7 +111,7 @@ function panels_init()
   panels_ids = {} -- holds all panels ids
 
   add_panels_from_dir_rec("panels")
-  
+
   if #panels_ids == 0 or (config and not config.defaultPanelsCopied) then
     fileUtils.recursiveCopy("panels/__default", "panels/pacci")
     fileUtils.recursiveCopy("default_data/panels", "panels")
@@ -178,95 +139,107 @@ function panels_init()
   end
 end
 
+local function load_panel_img(path, name)
+  local img = GraphicsUtil.loadImageFromSupportedExtensions(path .. "/" .. name)
+  if not img then
+    img = GraphicsUtil.loadImageFromSupportedExtensions("panels/__default/" .. name)
+
+    if not img then
+      error("Could not find default panel image")
+    end
+  end
+
+  return img
+end
+
+function Panels:loadSheets()
+  for color = 1, 8 do
+    self.sheets[color] = load_panel_img(self.path, "panel-" .. color)
+  end
+  self.sheetConfig = self.animationConfig
+  for i, animationState in ipairs(ANIMATION_STATES) do
+    self.sheetConfig[animationState].totalFrames =
+        self.sheetConfig[animationState].frames * self.sheetConfig[animationState].durationPerFrame
+  end
+end
+
+-- 
+function Panels:convertSinglesToSheetTexture(color, images)
+  local canvas = love.graphics.newCanvas(self.size * 10, self.size * #DEFAULT_PANEL_ANIM)
+  canvas:renderTo(function()
+    local row = 1
+    -- ipairs over a static table so the ordering is definitely consistent
+    for _, animationState in ipairs(ANIMATION_STATES) do
+      local animationConfig = self.animationConfig[animationState]
+      for frameNumber, imageIndex in ipairs(animationConfig.frames) do
+        love.graphics.draw(images[color][imageIndex], self.size * (frameNumber - 1), self.size * (row - 1))
+      end
+      row = row + 1
+    end
+  end)
+
+  return canvas
+end
+
+function Panels:loadSingles()
+  local panelFiles = fileUtils.getFilteredDirectoryItems(self.path, "file")
+  panelFiles = tableUtils.filter(panelFiles, function(f)
+    return string.match(f, "panel%d%d+%.")
+  end)
+  local images = {}
+  for color = 1, 8 do
+    images[color] = {}
+
+    local files = tableUtils.filter(panelFiles, function(f)
+      return string.match(f, "panel" .. color .. "%d+%.")
+    end)
+
+    for i, file in ipairs(files) do
+      local index = tonumber(string.match(files[i], "%d+", 6))
+      images[color][index] = load_panel_img(self.path, file)
+    end
+  end
+
+  for color, panelImages in ipairs(images) do
+    self.sheets[color] = self:convertSinglesToSheetTexture(color, panelImages)
+  end
+
+  for i, animationState in ipairs(ANIMATION_STATES) do
+    self.sheetConfig[animationState] =
+    {
+      row = i,
+      durationPerFrame = self.animationConfig[animationState].durationPerFrame or 2,
+      frames = #self.animationConfig[animationState]
+    }
+    self.sheetConfig[animationState].totalFrames =
+        self.sheetConfig[animationState].frames * self.sheetConfig[animationState].durationPerFrame
+  end
+end
+
 function Panels:load()
   logger.debug("loading panels " .. self.id)
-  local function load_panel_img(name)
-    local img = GraphicsUtil.loadImageFromSupportedExtensions(self.path .. "/" .. name)
-    if not img then
-      img = GraphicsUtil.loadImageFromSupportedExtensions("panels/__default/" .. name)
-      
-      if not img then
-        error("Could not find default panel image")
-      end
-    end
 
-    return img
-  end
-  -- colors 1-7 are normal colors, 8 is [!], 9 is an empty panel.
-  local sheet = nil
-  local panelSet = nil
-  local panelConverts = {}
-  local oldFormat = not love.filesystem.getInfo(self.path.."/".."panels.png")
-  if (oldFormat or (not self.sheet)) then
-    if oldFormat then
-      for i = 1, 9 do
-        local img = load_panel_img("panel"..(i ~= 9 and tostring(i).."1" or "00"))
-        local width, height = img:getDimensions()
-        local newPanel = "panel-"..tostring(i ~= 9 and tostring(i) or "0")
-        self.animations[newPanel].size = {width = width, height = width}
-        if i ~= 9 then
-          local tempCanvas = love.graphics.newCanvas(width*6, height*8)
-          tempCanvas:renderTo(function()
-              for row, anim in ipairs(PANEL_ANIM_CONVERTS) do
-                for count, frame in ipairs(anim) do
-                  img = load_panel_img("panel" .. tostring(i) .. tostring(frame))
-                  love.graphics.draw(img, width*(count-1), height*(row-1))
-                end
-              end
-            end
-          )
-          panelConverts[newPanel] = love.graphics.newImage(tempCanvas:newImageData())
-          --love.filesystem.write(self.path.."/"..newPanel..".png", tempCanvas:newImageData():encode("png"))
-        else
-          panelConverts[newPanel] = img
-        end
-      end
+  self.greyPanel = load_panel_img(self.path, "panel00")
+  self.size = self.greyPanel:getWidth()
+  self.scale = 48 / self.size
 
-      local metal_oldnames = {"metalend0", "metalmid", "metalend1", "garbageflash"}
+  self.images.metals = {
+    left = load_panel_img("metalend0"),
+    mid = load_panel_img("metalmid"),
+    right = load_panel_img("metalend1"),
+    flash = load_panel_img("garbageflash")
+  }
 
-      for i = 1, 4 do
-        local newPanel = metal_names[i]
-        local img = load_panel_img(metal_oldnames[i])
-        local width, height = img:getDimensions()
-        self.animations[newPanel].size = {width = width, height = height}
-        local tempCanvas = love.graphics.newCanvas(i ~= 4 and width or width*2, height)
-        tempCanvas:renderTo(function()
-            if i ~= 4 then
-              love.graphics.draw(img, 0, 0)
-            else
-              love.graphics.draw(load_panel_img("metalend0"), 0, 0)
-              love.graphics.draw(load_panel_img("metalend1"), width/2, 0)
-              love.graphics.draw(img, width, 0)
-            end
-          end
-        )
-        panelConverts[newPanel] = love.graphics.newImage(tempCanvas:newImageData())
-        --love.filesystem.write(self.path.."/"..metal_names[i]..".png", tempCanvas:newImageData():encode("png"))
-      end
-    end
-    -- local newInfo = {
-    --   ["id"] = self.id,
-    --   ["sheet"] = true,
-    --   ["animations"] = self.animations
-    -- }
-    -- love.filesystem.write(self.path.."/".."config.json", json.encode(newInfo))
-  end
-  for i = 1, 9 do
-    local name = "panel-" .. (i ~= 9 and tostring(i) or "0")
-    panelSet = self.animations[name]
-    sheet = oldFormat and panelConverts[name] or load_panel_img(name)
-    self.colors[i] = {}
-    self.colors[i].sheet = sheet
-    self.colors[i].batch = love.graphics.newSpriteBatch(sheet)
+  if self.type == "single" then
+    self:loadSingles()
+  else
+    self:loadSheets()
   end
 
-  self.images.metals = {}
-  for i = 1, 4 do
-    local name = metal_names[i]
-    panelSet = self.animations[name]
-    sheet = oldFormat and panelConverts[name] or load_panel_img(name)
-    self.images.metals[i] = AnimatedSprite(sheet, i, panelSet, panelSet.size.width, panelSet.size.height)
+  for color = 1, 8 do
+    self.batches[color] = love.graphics.newSpriteBatch(self.sheets[color], 100, "stream")
   end
+  self.quad = love.graphics.newQuad(0, 0, self.size, self.size, self.sheets[1])
 end
 
 local function switchFunc(self, panel)
@@ -332,21 +305,77 @@ local function switchFunc(self, panel)
   panel.animation[panel.color]:switchAnimation(panel, switch, wait, frame)
 end
 
-function Panels:addToDrawBatch(panel, danger, dangerTimer)
-  local batch = self.colors[panel.color].batch
-  local conf
-  if panel.state == "normal" then
-    if panel.fell_from_garbage then
-      conf = self.animations.fromGarbage
-    elseif danger then
 
+local ceil = math.ceil
+-- draws the panel
+-- x, y: relative coordinates on the stack canvas
+-- clock: Stack.clock to calculate animation frames
+-- danger: nil - no danger, false - regular danger, true - panic
+-- dangerTimer: remaining time for which the danger animation continues 
+function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
+  if panel.color == 9 then
+    love.graphics.draw(self.greyPanel, x, y, 0, self.scale)
+  else
+    local batch = self.sheets[panel.color].batch
+    local conf
+    local frame
+    if panel.state == "normal" then
+      if panel.fell_from_garbage then
+        conf = self.sheetConfig.garbageBounce
+        -- fell_from_garbage counts down from 12 to 0
+        if panel.fell_from_garbage <= 0 then
+          frame = conf.frames
+        else
+          frame = ceil(panel.fell_from_garbage / conf.durationPerFrame)
+        end
+      elseif danger ~= nil then
+        if danger == false then
+          conf = self.sheetConfig.danger
+          -- danger_timer counts down from 18 or 15 to 0, depending on what triggered it and then wrapping back to 18
+          frame = wrap(1, self.danger_timer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames)
+        else
+          conf = self.sheetConfig.panic
+          frame = (clock / conf.durationPerFrame) % conf.frames
+        end
+      else
+        conf = self.sheetConfig.normal
+        frame = (clock / conf.durationPerFrame) % conf.frames
+        frame = ceil((clock % conf.totalFrames) / conf.durationPerFrame)
+
+      end
+    elseif panel.state == "matched" then
+      -- divide between flash and face
+      -- matched timer counts down to 0
+      local flashTime = self.levelData.frameConstants.FACE - panel.timer
+      if flashTime >= 0 then
+        conf = self.sheetConfig.face
+        frame = ceil((panel.timer % conf.totalFrames) / conf.durationPerFrame)
+      else
+        conf = self.sheetConfig.flash
+        -- flash counts down to panel.frameConstants.FACE
+        -- original timer 44
+        -- panel timer 23 
+        -- frames 3
+        -- duration per frame 2
+        -- in dem fall 
+        frame = ceil((flashTime % conf.totalFrames) / conf.durationPerFrame)
+      end
+    elseif panel.state == "popped" then
+      -- draw nothing
     else
-
+      conf = self.sheetConfig[panel.state]
+      if panel.state == "landing" then
+        -- landing counts down from 13, ending at 0
+      end
     end
 
+    self.quad:setViewport(frame * self.size, (conf.row - 1) * self.size, self.size, self. size)
+    batch:add(self.quad, x, y, 0, self.scale)
   end
 end
 
 function Panels:draw()
-
+  for color = 1, 8 do
+    love.graphics.draw(self.batches[color])
+  end
 end
