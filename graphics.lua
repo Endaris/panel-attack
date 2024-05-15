@@ -573,6 +573,7 @@ function Stack.render(self)
 
   self:drawDebugPanels(shakeOffset)
   self:drawDebug()
+
 end
 
 function Stack:drawRating()

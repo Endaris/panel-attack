@@ -1,4 +1,3 @@
-local class = require("class")
 local logger = require("logger")
 
 local PREFIX_OF_IGNORED_DIRECTORIES = "__"
@@ -34,24 +33,16 @@ end
 
 -- copies a file from the given source to the given destination
 function fileUtils.copyFile(source, destination)
-  local lfs = love.filesystem
-  local source_file = lfs.newFile(source)
-  source_file:open("r")
-  local source_size = source_file:getSize()
-  temp = source_file:read(source_size)
-  source_file:close()
-
-  local new_file = lfs.newFile(destination)
-  new_file:open("w")
-  local success, message = new_file:write(temp, source_size)
-  new_file:close()
+  local success
+  local source_file, err = love.filesystem.read(source)
+  success, err = love.filesystem.write(destination, source_file)
+  return success, err
 end
 
 -- copies a file from the given source to the given destination
 function fileUtils.recursiveCopy(source, destination)
   local lfs = love.filesystem
   local names = lfs.getDirectoryItems(source)
-  local temp
   for i, name in ipairs(names) do
     local info = lfs.getInfo(source .. "/" .. name)
     if info and info.type == "directory" then
@@ -64,16 +55,7 @@ function fileUtils.recursiveCopy(source, destination)
       end
       logger.trace("copying file:  " .. source .. "/" .. name .. " to " .. destination .. "/" .. name)
 
-      local source_file = lfs.newFile(source .. "/" .. name)
-      source_file:open("r")
-      local source_size = source_file:getSize()
-      temp = source_file:read(source_size)
-      source_file:close()
-
-      local new_file = lfs.newFile(destination .. "/" .. name)
-      new_file:open("w")
-      local success, message = new_file:write(temp, source_size)
-      new_file:close()
+      local success, message = fileUtils.copyFile(source .. "/" .. name, destination .. "/" .. name)
 
       if not success then
         logger.warn(message)
@@ -103,7 +85,7 @@ end
 
 function fileUtils.readJsonFile(file)
   if not love.filesystem.getInfo(file, "file") then
-    logger.info("No file at specified path " .. file)
+    logger.debug("No file at specified path " .. file)
     return nil
   else
     local fileContent, info = love.filesystem.read(file)

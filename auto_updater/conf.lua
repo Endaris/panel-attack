@@ -1,9 +1,6 @@
 local function readUseAndroidExternalStorage()
   if love.filesystem.getInfo("UseAndroidExternalStorage", "file") then
-    local file = love.filesystem.newFile("UseAndroidExternalStorage")
-    file:open("r")
-    local result = file:read(file:getSize())
-    file:close()
+    local result = love.filesystem.read("UseAndroidExternalStorage")
     return (result == "true" or result == "True")
   else
     return false

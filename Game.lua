@@ -144,7 +144,7 @@ function Game:initializeLocalPlayer()
   self.localPlayer:connectSignal("selectedStageIdChanged", config, function(config, newId) config.stage = newId end)
   self.localPlayer:connectSignal("panelIdChanged", config, function(config, newId) config.panels = newId end)
   self.localPlayer:connectSignal("inputMethodChanged", config, function(config, inputMethod) config.inputMethod = inputMethod end)
-  self.localPlayer:connectSignal("startingSpeedChanged", config, function(config, speed) config.endless_speed = speed end)
+  --self.localPlayer:connectSignal("startingSpeedChanged", config, function(config, speed) config.endless_speed = speed end)
   self.localPlayer:connectSignal("difficultyChanged", config, function(config, difficulty) config.endless_difficulty = difficulty end)
   self.localPlayer:connectSignal("levelChanged", config, function(config, level) config.level = level end)
   self.localPlayer:connectSignal("wantsRankedChanged", config, function(config, wantsRanked) config.ranked = wantsRanked end)
@@ -334,11 +334,18 @@ function Game:reset()
 end
 
 function Game.errorData(errorString, traceBack)
-  local system_info = "OS: " .. love.system.getOS()
+  local systemInfo = "OS: " .. (love.system.getOS() or "Unknown")
   local loveVersion = Game.loveVersionString() or "Unknown"
   local username = config.name or "Unknown"
-  local buildVersion = GAME_UPDATER_GAME_VERSION or "Unknown"
-  local systemInfo = system_info or "Unknown"
+  local buildVersion
+  if GAME_UPDATER then
+    buildVersion = GAME_UPDATER.activeReleaseStream.name .. " " .. GAME_UPDATER.activeVersion.version
+  else
+    buildVersion = "Unknown"
+  end
+   
+  local name, version, vendor, device = love.graphics.getRendererInfo()
+  local rendererInfo = name .. ";" .. version .. ";" .. vendor .. ";" .. device
 
   local errorData = {
       stack = traceBack,
@@ -348,6 +355,7 @@ function Game.errorData(errorString, traceBack)
       release_version = buildVersion,
       operating_system = systemInfo,
       love_version = loveVersion,
+      rendererInfo = rendererInfo,
       theme = config.theme
     }
 
@@ -375,6 +383,7 @@ function Game.detailedErrorLogString(errorData)
     "Build Version: " .. errorData.release_version .. newLine ..
     "Operating System: " .. errorData.operating_system .. newLine ..
     "Love Version: " .. errorData.love_version .. newLine ..
+    "Renderer Info: " .. errorData.rendererInfo .. newLine ..
     "UTC Time: " .. formattedTime .. newLine ..
     "Scene: " .. sceneManager.activeScene.name .. newLine
 

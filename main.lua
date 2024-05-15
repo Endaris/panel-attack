@@ -28,8 +28,8 @@ local ClientMessages = require("network.ClientProtocol")
 -- move to load once global dependencies have been resolved
 GAME = Game()
 
-require("engine/GarbageQueue")
-require("engine/telegraph")
+require("engine.GarbageQueue")
+require("engine.telegraph")
 require("engine")
 require("engine.checkMatches")
 require("network.Stack")
@@ -47,9 +47,9 @@ require("Theme")
 local utf8 = require("utf8Additions")
 require("computerPlayers.computerPlayer")
 
--- We override love.run with a function that refers to `pa_runInternal` for its gameloop function
+-- We override love.run with a function that refers to `runInternal` for its gameloop function
 -- so by overwriting that, the new runInternal will get used on the next iteration
-love.pa_runInternal = CustomRun.innerRun
+love.runInternal = CustomRun.innerRun
 if GAME_UPDATER == nil then
   -- We don't have an autoupdater, so we need to override run.
   -- In the autoupdater case run will already have been overridden and be running
@@ -169,6 +169,7 @@ function love.quit()
   config.maximizeOnStartup = love.window.isMaximized()
   config.fullscreen = love.window.getFullscreen()
   write_conf_file()
+  pcall(love.filesystem.write, "debug.log", table.concat(logger.messages, "\n"))
 end
 
 function love.errorhandler(msg)
@@ -202,7 +203,6 @@ function love.errorhandler(msg)
     end
   end
   local sanitizedTrace = table.concat(traceLines, "\n")
-  
   local function getGameErrorData(sanitizedMessage, sanitizedTrace)
     local errorData = Game.errorData(sanitizedMessage, sanitizedTrace)
     local detailedErrorLogString = Game.detailedErrorLogString(errorData)
@@ -222,8 +222,13 @@ function love.errorhandler(msg)
   table.insert(errorLines, "Error\n")
   if success then
     table.insert(errorLines, detailedErrorLogString)
+    logger.info(detailedErrorLogString)
   else
     table.insert(errorLines, sanitizedMessage)
+    logger.info(sanitizedMessage)
+  end
+  if logger.messages then
+    pcall(love.filesystem.write, "debug.log", table.concat(logger.messages, "\n"))
   end
   if #sanitizedMessage ~= #msg then
     table.insert(errorLines, "Invalid UTF-8 string in error message.")

@@ -37,7 +37,7 @@ function GraphicsUtil.privateLoadImage(path_and_name)
   if image == nil then
     return nil
   end
-  logger.debug("loaded asset: " .. path_and_name)
+  logger.trace("loaded asset: " .. path_and_name)
   return image
 end
 
@@ -191,32 +191,6 @@ function GraphicsUtil.drawQuad(image, quad, x, y, rotation, xScale, yScale, xOff
   end
 
   love.graphics.draw(image, quad, x, y, rotation, xScale, yScale, xOffset, yOffset)
-end
-
-function menu_drawfq(img, quad, x, y, halign, valign, rot, x_scale, y_scale)
-  rot = rot or 0
-  x_scale = x_scale or 1
-  y_scale = y_scale or 1
-  halign = halign or "left"
-  local qX, qY, qW, qH = quad:getViewport()
-  if halign == "center" then
-    x = x - math.floor(qW * 0.5 * x_scale)
-  elseif halign == "right" then
-    x = x - math.floor(qW * x_scale)
-  end
-  valign = valign or "top"
-  if valign == "center" then
-    y = y - math.floor(qH * 0.5 * y_scale)
-  elseif valign == "bottom" then
-    y = y - math.floor(qH * y_scale)
-  end
-  if GAME.isDrawing then
-    love.graphics.draw(img, quad, x, y,
-    rot, x_scale, y_scale)
-  else
-    gfx_q:push({love.graphics.draw, {img, quad, x, y,
-    rot, x_scale, y_scale}})
-  end
 end
 
 -- Draws a rectangle at the given coordinates

@@ -77,6 +77,7 @@ function Match:deinit()
   for i = 1, #self.stacks do
     self.stacks[i]:deinit()
   end
+  ModController:releaseModsFor(self)
 end
 
 function Match:addPlayer(player)
@@ -544,7 +545,7 @@ function Match:setStage(stageId)
   else
     self.stageId = StageLoader.fullyResolveStageSelection()
   end
-  ModController:loadModFor(stages[self.stageId], "match")
+  ModController:loadModFor(stages[self.stageId], self)
 end
 
 function Match:generateSeed()

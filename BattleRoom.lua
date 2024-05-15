@@ -353,14 +353,13 @@ function BattleRoom.onStyleChanged(style, player)
 end
 
 function BattleRoom:startLoadingNewAssets()
-  if ModLoader.loading_queue:len() == 0 then
-    for i = 1, #self.players do
-      local playerSettings = self.players[i].settings
-      if not stages[playerSettings.stageId].fully_loaded then
-        ModController:loadModFor(stages[playerSettings.stageId], i)
+  if ModLoader.loading_mod == nil then
+    for _, player in ipairs(self.players) do
+      if not stages[player.settings.stageId].fully_loaded then
+        ModController:loadModFor(stages[player.settings.stageId], player)
       end
-      if not characters[playerSettings.characterId].fully_loaded then
-        ModController:loadModFor(characters[playerSettings.characterId], i)
+      if not characters[player.settings.characterId].fully_loaded then
+        ModController:loadModFor(characters[player.settings.characterId], player)
       end
     end
   end
@@ -372,7 +371,7 @@ end
 function BattleRoom.updateInputConfigurationForPlayer(player, lock)
   if lock then
     for _, inputConfiguration in ipairs(GAME.input.inputConfigurations) do
-      if not inputConfiguration.claimed and tableUtils.length(inputConfiguration.isDown) > 0 then
+      if not inputConfiguration.claimed and inputConfiguration.isDown.Swap1 then
         -- assign the first unclaimed input configuration that is used
         player:setInputMethod("controller")
         player:restrictInputs(inputConfiguration)
