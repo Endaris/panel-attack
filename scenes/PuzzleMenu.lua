@@ -37,8 +37,6 @@ local BUTTON_HEIGHT = 25
 
 function PuzzleMenu:startGame(puzzleSet)
   if config.puzzle_level ~= self.levelSlider.value or config.puzzle_randomColors ~= self.randomColorsButtons.value then
-    config.puzzle_level = self.levelSlider.value
-    config.puzzle_randomColors = self.randomColorsButtons.value
     logger.debug("saving settings...")
     write_conf_file()
   end
@@ -58,14 +56,14 @@ function PuzzleMenu:startGame(puzzleSet)
     end
   end
 
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+  GAME.theme:playValidationSfx()
 
   GAME.localPlayer:setPuzzleSet(puzzleSet)
   GAME.localPlayer:setWantsReady(true)
 end
 
 function PuzzleMenu:exit()
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+  GAME.theme:playValidationSfx()
   GAME.battleRoom:shutdown()
   sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
 end
@@ -76,10 +74,12 @@ function PuzzleMenu:load(sceneParams)
       tickLength = tickLength,
       value = config.puzzle_level or 5,
       onValueChange = function(s)
-        SoundController:playSfx(themes[config.theme].sounds.menu_move)
+        GAME.theme:playMoveSfx()
+        config.puzzle_level = s.value
+        GAME.localPlayer:setLevel(s.value)
       end
     })
-  
+
   self.randomColorsButtons = ButtonGroup(
     {
       buttons = {
@@ -88,7 +88,10 @@ function PuzzleMenu:load(sceneParams)
       },
       values = {false, true},
       selectedIndex = config.puzzle_randomColors and 2 or 1,
-      onChange = function() SoundController:playSfx(themes[config.theme].sounds.menu_move) end
+      onChange = function(value)
+        GAME.theme:playMoveSfx()
+        config.puzzle_randomColors = value
+      end
     }
   )
   
@@ -100,7 +103,10 @@ function PuzzleMenu:load(sceneParams)
       },
       values = {false, true},
       selectedIndex = config.puzzle_randomFlipped and 2 or 1,
-      onChange = function() SoundController:playSfx(themes[config.theme].sounds.menu_move) end
+      onChange = function(value)
+        GAME.theme:playMoveSfx()
+        config.puzzle_randomFlipped = value
+      end
     }
   )
   
@@ -111,7 +117,7 @@ function PuzzleMenu:load(sceneParams)
   }
 
   for puzzleSetName, puzzleSet in pairsSortedByKeys(GAME.puzzleSets) do
-    menuOptions[#menuOptions + 1] = MenuItem.createButtonMenuItem(puzzleSetName, nil, false, function() self:startGame(puzzleSet) end, nil, false)
+    menuOptions[#menuOptions + 1] = MenuItem.createButtonMenuItem(puzzleSetName, nil, false, function() self:startGame(puzzleSet) end)
   end
   menuOptions[#menuOptions + 1] = MenuItem.createButtonMenuItem("back", nil, nil, self.exit)
   

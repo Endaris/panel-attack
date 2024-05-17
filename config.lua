@@ -219,7 +219,7 @@ config = {
             configTable.popfx = read_data.popfx
           end
           if type(read_data.shakeIntensity) == "number" then
-            configTable.shakeIntensity = bound(0.5, read_data.shakeIntensity, 1)
+            configTable.shakeIntensity = util.bound(0.5, read_data.shakeIntensity, 1)
           end
           if type(read_data.cardfx_scale) == "number" then
             configTable.cardfx_scale = util.bound(1, read_data.cardfx_scale, 200)
@@ -259,9 +259,10 @@ config = {
           if type(read_data.display) == "number" then
             configTable.display = read_data.display
           end
+        
 
           if type(read_data.activeGarbageCollectionPercent) == "number" then
-            config.activeGarbageCollectionPercent = bound(0.1, read_data.activeGarbageCollectionPercent, 0.8)
+            config.activeGarbageCollectionPercent = util.bound(0.1, read_data.activeGarbageCollectionPercent, 0.8)
           end
         end
 

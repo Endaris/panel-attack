@@ -122,6 +122,14 @@ function StageLoader.initStages()
   for _, stage in pairs(stages) do
     stage:preload()
   end
+
+  -- bundles without stage thumbnail display up to 4 thumbnails of their substages
+  -- there is no guarantee the substages had been loaded previously so do it after everything got preloaded
+  for _, stage in pairs(stages) do
+    if stage:is_bundle() and not stage.images.thumbnail then
+      stage.images.thumbnail = stage:createThumbnail()
+    end
+  end
 end
 
 function StageLoader.resolveStageSelection(stageId)
@@ -142,8 +150,11 @@ function StageLoader.resolveBundle(stageId)
 end
 
 function StageLoader.fullyResolveStageSelection(stageId)
+  logger.debug("Resolving stageId " .. (stageId or ""))
   stageId = StageLoader.resolveStageSelection(stageId)
-  return StageLoader.resolveBundle(stageId)
+  stageId = StageLoader.resolveBundle(stageId)
+  logger.debug("Resolved stageId to " .. stageId)
+  return stageId
 end
 
 return StageLoader

@@ -5,14 +5,12 @@ local logger = require("logger")
 local analytics = require("analytics")
 local sceneManager = require("scenes.sceneManager")
 local input = require("inputManager")
-local save = require("save")
 local tableUtils = require("tableUtils")
-local Menu = require("ui.Menu")
 local consts = require("consts")
 local Signal = require("helpers.signal")
 local StageLoader = require("mods.StageLoader")
-local ModLoader = require("mods.ModLoader")
 local ModController = require("mods.ModController")
+local SoundController = require("music.SoundController")
 
 --@module GameBase
 -- Scene template for running any type of game instance (endless, vs-self, replays, etc.)
@@ -96,17 +94,23 @@ end
 -- unlike regular asset load, this function connects the used assets to the match so they cannot be unloaded
 function GameBase:loadAssets(match)
   for i, player in ipairs(match.players) do
-    ModController:loadModFor(characters[player.settings.characterId], player, true)
-    characters[player.settings.characterId]:register(match)
+    local character = characters[player.settings.characterId]
+    logger.debug("Force loading character " .. character.id .. " as part of GameBase:load")
+    ModController:loadModFor(character, player, true)
+    character:register(match)
   end
 
   if not match.stageId then
+    logger.debug("Match has somehow no stageId at GameBase:load()")
     match.stageId = StageLoader.fullyResolveStageSelection(match.stageId)
   end
-  if stages[match.stageId].fully_loaded then
-    stages[match.stageId]:register(match)
+  local stage = stages[match.stageId]
+  if stage.fully_loaded then
+    logger.debug("Match stage " .. stage.id .. " already fully loaded in GameBase:load()")
+    stage:register(match)
   else
-    ModController:loadModFor(stages[match.stageId], match, true)
+    logger.debug("Force loading stage " .. stage.id .. " as part of GameBase:load")
+    ModController:loadModFor(stage, match, true)
   end
 end
 
@@ -125,6 +129,10 @@ function GameBase:load(sceneParams)
   self.stage = stages[self.match.stageId]
   self.backgroundImage = UpdatingImage(self.stage.images.background, false, 0, 0, consts.CANVAS_WIDTH, consts.CANVAS_HEIGHT)
   self.musicSource = self:pickMusicSource()
+  if self.musicSource.stageTrack and not self.keepMusic then
+    -- reset the track to make sure it starts from the default settings
+    self.musicSource.stageTrack:stop()
+  end
 
   self:customLoad(sceneParams)
 
@@ -142,10 +150,15 @@ function GameBase:handlePause()
 
     if self.match.isPaused then
       SoundController:pauseMusic()
-    else
+    elseif self.musicSource then
       SoundController:playMusic(self.musicSource.stageTrack)
     end
-    Menu.playValidationSfx()
+    GAME.theme:playValidationSfx()
+  end
+
+  if self.match.isPaused and input.isDown["MenuEsc"] then
+    GAME.theme:playCancelSfx()
+    self.match:abort()
   end
 end
 
@@ -175,7 +188,7 @@ function GameBase:runGameOver()
   local keyPressed = (tableUtils.length(input.isDown) > 0) or (tableUtils.length(input.mouse.isDown) > 0)
 
   if ((displayTime >= self.maxDisplayTime and self.maxDisplayTime ~= -1) or (displayTime >= self.minDisplayTime and keyPressed)) then
-    SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+    GAME.theme:playValidationSfx()
     SFX_GameOver_Play = 0
     sceneManager:switchToScene(sceneManager:createScene(self.nextScene, self.nextSceneParams))
   end
@@ -199,17 +212,6 @@ function GameBase:runGame(dt)
   self:customRun()
 
   self:handlePause()
-
-  if self.match.isPaused and input.isDown["MenuEsc"] then
-    Menu.playCancelSfx()
-    self.match:abort()
-    return
-  end
-
-  if self.match:hasEnded() then
-    self:setupGameOver()
-    return
-  end
 end
 
 function GameBase:musicCanChange()
@@ -241,11 +243,13 @@ function GameBase:musicCanChange()
 end
 
 function GameBase:onGameStart(match)
-  SoundController:playMusic(self.musicSource.stageTrack)
+  if self.musicSource then
+    SoundController:playMusic(self.musicSource.stageTrack)
+  end
 end
 
 function GameBase:changeMusic(useDangerMusic)
-  if self.musicSource.stageTrack and self:musicCanChange() then
+  if self.musicSource and self.musicSource.stageTrack and self:musicCanChange() then
     self.musicSource.stageTrack:changeMusic(useDangerMusic)
   end
 end
@@ -256,7 +260,7 @@ function GameBase:update(dt)
   else
     if not self.match:hasLocalPlayer() then
       if input.isDown["MenuEsc"] then
-        Menu.playCancelSfx()
+        GAME.theme:playCancelSfx()
         self.match:abort()
         if GAME.tcpClient:isConnected() then
           GAME.battleRoom:shutdown()
@@ -323,10 +327,12 @@ function GameBase:drawHUD()
         stack:drawAnalyticData()
       end
     end
+    self:drawCommunityMessage()
   end
 end
 
 function GameBase:genericOnMatchEnded(match)
+  self:setupGameOver()
   -- matches always sort players to have locals in front so if 1 isn't local, none is
   if match.players[1].isLocal then
     analytics.game_ends(match.players[1].stack.analytic)

@@ -29,7 +29,7 @@ end
 function CharacterSelectVsSelf:loadUserInterface()
   local player = GAME.battleRoom.players[1]
 
-  self.ui.grid = Grid({unitSize = 98, gridWidth = 9, gridHeight = 6, unitMargin = 7, hAlign = "center", vAlign = "center"})
+  self.ui.grid = Grid({unitSize = 100, gridWidth = 9, gridHeight = 6, unitMargin = 8, hAlign = "center", vAlign = "center"})
   self.uiRoot:addChild(self.ui.grid)
 
   self.ui.characterIcons[1] = self:createPlayerIcon(player)
@@ -77,6 +77,8 @@ function CharacterSelectVsSelf:loadUserInterface()
 
   self.ui.pageIndicator = self:createPageIndicator(self.ui.characterGrid)
   self.ui.grid:createElementAt(5, 6, 1, 1, "pageIndicator", self.ui.pageIndicator)
+
+  self.ui.pageTurnButtons = self:createPageTurnButtons(self.ui.characterGrid)
 
   self.ui.leaveButton = self:createLeaveButton()
   self.ui.grid:createElementAt(9, 6, 1, 1, "leaveButton", self.ui.leaveButton)

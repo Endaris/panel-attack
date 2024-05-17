@@ -356,9 +356,11 @@ function BattleRoom:startLoadingNewAssets()
   if ModLoader.loading_mod == nil then
     for _, player in ipairs(self.players) do
       if not stages[player.settings.stageId].fully_loaded then
+        logger.debug("Loading stage " .. player.settings.stageId .. " as part of BattleRoom:startLoadingNewAssets")
         ModController:loadModFor(stages[player.settings.stageId], player)
       end
       if not characters[player.settings.characterId].fully_loaded then
+        logger.debug("Loading stage " .. player.settings.characterId .. " as part of BattleRoom:startLoadingNewAssets")
         ModController:loadModFor(characters[player.settings.characterId], player)
       end
     end
@@ -371,7 +373,7 @@ end
 function BattleRoom.updateInputConfigurationForPlayer(player, lock)
   if lock then
     for _, inputConfiguration in ipairs(GAME.input.inputConfigurations) do
-      if not inputConfiguration.claimed and inputConfiguration.isDown.Swap1 then
+      if not inputConfiguration.claimed and tableUtils.length(inputConfiguration.isDown) > 0 then
         -- assign the first unclaimed input configuration that is used
         player:setInputMethod("controller")
         player:restrictInputs(inputConfiguration)
@@ -486,7 +488,6 @@ function BattleRoom:shutdown()
     self.match:deinit()
     self.match = nil
   end
-  SoundController:stopMusic()
   self:shutdownNetwork()
   self.hasShutdown = true
   GAME:initializeLocalPlayer()

@@ -106,6 +106,7 @@ function Game:setupRoutine()
   
   coroutine.yield(loc("ld_theme"))
   theme_init()
+  self.theme = themes[config.theme]
   
   -- stages and panels before characters since they are part of their loading!
   coroutine.yield(loc("ld_stages"))
@@ -264,6 +265,8 @@ function Game:update(dt)
   if self.battleRoom then
     self.battleRoom:update(dt)
   end
+  
+  handleShortcuts()
 
   sceneManager:update(dt)
 
@@ -274,7 +277,6 @@ function Game:update(dt)
   self:updateMouseVisibility(dt)
   SoundController:update()
   self.rich_presence:runCallbacks()
-  handleShortcuts()
 end
 
 function Game:switchToStartScene()
@@ -317,7 +319,7 @@ function Game:drawFPS()
 end
 
 function Game:drawScaleInfo()
-  if self.showGameScaleUntil > self.timer or config.debug_mode then
+  if self.showGameScaleUntil > self.timer then
     local scaleString = "Scale: " .. self.canvasXScale .. " (" .. consts.CANVAS_WIDTH * self.canvasXScale .. " x " .. consts.CANVAS_HEIGHT * self.canvasYScale .. ")"
     local newPixelWidth = love.graphics.getWidth()
 
@@ -510,7 +512,7 @@ function Game:refreshCanvasAndImagesForNewScale()
   -- We need to reload all assets and fonts to get the new scaling info and filters
 
   -- Reload theme to get the new resolution assets
-  themes[config.theme]:graphics_init()
+  themes[config.theme]:graphics_init(true)
   themes[config.theme]:final_init()
   -- Reload stages to get the new resolution assets
   stages_reload_graphics()

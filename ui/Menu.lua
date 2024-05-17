@@ -237,14 +237,14 @@ end
 function Menu:scrollUp()
   if self.selectedIndex > 1 then
     self:setSelectedIndex(self.selectedIndex - 1)
-    SoundController:playSfx(themes[config.theme].sounds.menu_move)
+    GAME.theme:playMoveSfx()
   end
 end
 
 function Menu:scrollDown()
   if self.selectedIndex < #self.menuItems then
     self:setSelectedIndex(self.selectedIndex + 1)
-    SoundController:playSfx(themes[config.theme].sounds.menu_move)
+    GAME.theme:playMoveSfx()
   end
 end
 
@@ -253,11 +253,11 @@ function Menu:update(dt)
     return
   end
 
-  if input:isPressedWithRepeat("Up") then
+  if input:isPressedWithRepeat("MenuUp") then
     self:scrollUp()
   end
 
-  if input:isPressedWithRepeat("Down") then
+  if input:isPressedWithRepeat("MenuDown") then
     self:scrollDown()
   end
 
@@ -269,30 +269,17 @@ function Menu:update(dt)
       selectedElement:receiveInputs(input, dt)
     end
   end
-  
+
   if input.isDown["MenuEsc"] then
     if self.selectedIndex ~= #self.menuItems then
       self:setSelectedIndex(#self.menuItems)
-      SoundController:playSfx(themes[config.theme].sounds.menu_cancel)
+      GAME.theme:playCancelSfx()
     end
   end
 end
 
 function Menu:drawSelf()
 
-end
-
--- sound effects
-function Menu.playCancelSfx()
-  SoundController:playSfx(themes[config.theme].sounds.menu_cancel)
-end
-
-function Menu.playValidationSfx()
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
-end
-
-function Menu.playMoveSfx()
-  SoundController:playSfx(themes[config.theme].sounds.menu_move)
 end
 
 return Menu

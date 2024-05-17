@@ -47,12 +47,12 @@ local BUTTON_WIDTH = 60
 local BUTTON_HEIGHT = 25
 
 function SimpleGameSetupMenu:startGame()
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+  GAME.theme:playValidationSfx()
   GAME.localPlayer:setWantsReady(true)
 end
 
 function SimpleGameSetupMenu:exit()
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+  GAME.theme:playCancelSfx()
   GAME.battleRoom:shutdown()
   sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
 end
@@ -79,7 +79,7 @@ function SimpleGameSetupMenu:load(sceneParams)
         values = {1, 2, 3, 4},
         selectedIndex = GAME.config.endless_difficulty or 1,
         onChange = function(value)
-          SoundController:playSfx(themes[config.theme].sounds.menu_move)
+          GAME.theme:playMoveSfx()
           config.endless_difficulty = value
         end
       }
@@ -90,7 +90,7 @@ function SimpleGameSetupMenu:load(sceneParams)
       tickLength = tickLength,
       value = config.endless_level or 5,
       onValueChange = function(s)
-        SoundController:playSfx(themes[config.theme].sounds.menu_move)
+        GAME.theme:playMoveSfx()
         GAME.localPlayer:setLevel(s.value)
         config.level = s.value
       end
@@ -111,7 +111,7 @@ function SimpleGameSetupMenu:load(sceneParams)
       values = {"Classic", "Modern"},
       selectedIndex = config.endless_level and 2 or 1,
       onChange = function(value)
-        SoundController:playSfx(themes[config.theme].sounds.menu_move)
+        GAME.theme:playMoveSfx()
         if value == 1 then
           GAME.localPlayer:setStyle(GameModes.Styles.CLASSIC)
           GAME.localPlayer:setDifficulty(self.difficultyButtons.value)
@@ -140,7 +140,18 @@ function SimpleGameSetupMenu:load(sceneParams)
     MenuItem.createButtonMenuItem("go_", nil, nil, function() self:startGame() end),
     MenuItem.createButtonMenuItem("back", nil, nil, self.exit)
   }
+
+  -- the go buttons are game starting ones, therefore they shouldn't react to the default config
+  -- but only key configs instead
+  local function receiveInputs(menuItem, input)
+    if input.isDown.Swap1 or input.isDown.Start then
+      menuItem.textButton:onClick(input)
+    end
+  end
   
+  modernMenuOptions[3].receiveInputs = receiveInputs
+  classicMenuOptions[4].receiveInputs = receiveInputs
+
   self.classicMenu = Menu.createCenteredMenu(classicMenuOptions)
   self.modernMenu = Menu.createCenteredMenu(modernMenuOptions)
   if self.typeButtons.value == "Classic" then

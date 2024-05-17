@@ -25,7 +25,7 @@ function CharacterSelect2p:customLoad(sceneParams)
 end
 
 function CharacterSelect2p:loadUserInterface()
-  self.ui.grid = Grid({unitSize = 98, gridWidth = 9, gridHeight = 6, unitMargin = 7, hAlign = "center", vAlign = "center"})
+  self.ui.grid = Grid({unitSize = 100, gridWidth = 9, gridHeight = 6, unitMargin = 8, hAlign = "center", vAlign = "center"})
   self.uiRoot:addChild(self.ui.grid)
 
   self.ui.panelSelection = MultiPlayerSelectionWrapper({hFill = true, alignment = "top", hAlign = "center", vAlign = "top"})
@@ -112,6 +112,10 @@ function CharacterSelect2p:loadUserInterface()
   self.ui.grid:createElementAt(2, 1, 1, 1, "player 1 info", self.ui.playerInfos[1])
   self.ui.grid:createElementAt(7, 1, 1, 1, "p2 icon", self.ui.characterIcons[2])
   self.ui.grid:createElementAt(8, 1, 1, 1, "player 2 info", self.ui.playerInfos[2])
+
+  -- need to be created at the end after the character grid has been settled in
+  -- otherwise the placement will be wrong
+  self.ui.pageTurnButtons = self:createPageTurnButtons(self.ui.characterGrid)
 end
 
 

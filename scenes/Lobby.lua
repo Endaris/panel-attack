@@ -1,21 +1,18 @@
 local Scene = require("scenes.Scene")
 local sceneManager = require("scenes.sceneManager")
 local Label = require("ui.Label")
-local ButtonGroup = require("ui.ButtonGroup")
-local TextButton = require("ui.TextButton")
 local Menu = require("ui.Menu")
 local MenuItem = require("ui.MenuItem")
 local class = require("class")
-local input = require("inputManager")
 local logger = require("logger")
 local util = require("util")
 local LoginRoutine = require("network.LoginRoutine")
 local MessageListener = require("network.MessageListener")
 local ClientMessages = require("network.ClientProtocol")
-local UiElement = require("ui.UIElement")
 local Game2pVs = require("scenes.Game2pVs")
 local CharacterSelect2p = require("scenes.CharacterSelect2p")
 local CatchUpTransition = require("scenes.Transitions.CatchUpTransition")
+local SoundController = require("music.SoundController")
 
 local STATES = {Login = 1, Lobby = 2}
 
@@ -65,7 +62,7 @@ sceneManager:addScene(Lobby)
 ----------
 
 local function exitMenu()
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+  GAME.theme:playValidationSfx()
   GAME.tcpClient:resetNetwork()
   sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
 end
@@ -116,7 +113,7 @@ end
 -----------------
 
 function Lobby:toggleLeaderboard()
-  Menu.playMoveSfx()
+  GAME.theme:playMoveSfx()
   if not self.leaderboardLabel.isVisible then
     self.leaderboardToggleLabel:setText("lb_hide_board")
     self.leaderboardResponse = GAME.tcpClient:sendRequest(ClientMessages.requestLeaderboard())
@@ -371,6 +368,7 @@ end
 
 function Lobby:draw()
   self.backgroundImg:draw()
+  self:drawCommunityMessage()
   if self.state == STATES.Lobby then
     self.uiRoot:draw()
   elseif self.state == STATES.Login then

@@ -192,7 +192,10 @@ function CharacterSelect:createLeaveButton()
     label = Label({text = "leave"}),
     backgroundColor = {1, 1, 1, 0},
     outlineColor = {1, 1, 1, 1},
-    onClick = self.leave
+    onClick = function()
+        GAME.theme:playCancelSfx()
+        self:leave()
+      end
   })
   leaveButton.onSelect = leaveButton.onClick
 
@@ -297,7 +300,7 @@ function CharacterSelect:getCharacterButtons()
       else
         return
       end
-      SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+      GAME.theme:playValidationSfx()
       if character then
         if character:canSuperSelect() and holdTime > consts.SUPER_SELECTION_START + consts.SUPER_SELECTION_DURATION then
           -- super select
@@ -415,6 +418,18 @@ function CharacterSelect:createPageIndicator(pagedUniGrid)
   return pageCounterLabel
 end
 
+function CharacterSelect:createPageTurnButtons(pagedUniGrid)
+  local x, y = pagedUniGrid:getScreenPos()
+  pagedUniGrid.pageTurnButtons.left.x = x - pagedUniGrid.unitSize
+  pagedUniGrid.pageTurnButtons.right.x = x + pagedUniGrid.width + pagedUniGrid.unitSize / 2
+  pagedUniGrid.pageTurnButtons.left.y = y + pagedUniGrid.height / 2 - pagedUniGrid.unitSize / 4
+  pagedUniGrid.pageTurnButtons.right.y = y + pagedUniGrid.height / 2 - pagedUniGrid.unitSize / 4
+
+  self.uiRoot:addChild(pagedUniGrid.pageTurnButtons.left)
+  self.uiRoot:addChild(pagedUniGrid.pageTurnButtons.right)
+  return pagedUniGrid.pageTurnButtons
+end
+
 function CharacterSelect:createCursor(grid, player)
   local cursor = GridCursor({
     grid = grid,
@@ -429,6 +444,7 @@ function CharacterSelect:createCursor(grid, player)
   player:connectSignal("wantsReadyChanged", cursor, cursor.setRapidBlinking)
 
   cursor.escapeCallback = function()
+    GAME.theme:playCancelSfx()
     if cursor.selectedGridPos.x == 9 and cursor.selectedGridPos.y == 6 then
       self:leave()
     elseif player.settings.wantsReady then
@@ -487,7 +503,7 @@ function CharacterSelect:createLevelSlider(player, imageWidth, height)
     tickLength = imageWidth,
     value = player.settings.level,
     onValueChange = function(s)
-      SoundController:playSfx(themes[config.theme].sounds.menu_move)
+      GAME.theme:playMoveSfx()
     end,
     hAlign = "center",
     vAlign = "center",
@@ -507,7 +523,7 @@ function CharacterSelect:createLevelSlider(player, imageWidth, height)
       if self.onBackCallback then
         self:onBackCallback()
       end
-      SoundController:playSfx(themes[config.theme].sounds.menu_cancel)
+      GAME.theme:playCancelSfx()
       self:yieldFocus()
     end
 
@@ -515,7 +531,7 @@ function CharacterSelect:createLevelSlider(player, imageWidth, height)
       if self.onSelectCallback then
         self:onSelectCallback()
       end
-      SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+      GAME.theme:playValidationSfx()
       self:yieldFocus()
     end
   end
@@ -569,7 +585,7 @@ end
 function CharacterSelect:createRankedSelection(player, width)
   local rankedSelector = BoolSelector({startValue = player.settings.wantsRanked, vFill = true, width = width, vAlign = "center", hAlign = "center"})
   rankedSelector.onValueChange = function(boolSelector, value)
-    SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+    GAME.theme:playValidationSfx()
     player:setWantsRanked(value)
   end
 
@@ -782,7 +798,6 @@ function CharacterSelect:leave()
   if GAME.battleRoom then
     -- in 2p local, with the current input shenanigans leave may be called twice
     GAME.battleRoom:shutdown()
-    SoundController:playSfx(themes[config.theme].sounds.menu_cancel)
     sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
   end
 end

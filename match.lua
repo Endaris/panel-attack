@@ -7,10 +7,10 @@ local Signal = require("helpers.signal")
 local SimulatedStack = require("SimulatedStack")
 local ChallengeModePlayer = require("ChallengeModePlayer")
 local consts = require("consts")
-local GraphicsUtil = require("graphics_util")
 local ModController = require("mods.ModController")
 local CharacterLoader = require("mods.CharacterLoader")
 local StageLoader = require("mods.StageLoader")
+local SoundController = require("music.SoundController")
 
 -- A match is a particular instance of the game, for example 1 time attack round, or 1 vs match
 Match =
@@ -77,7 +77,6 @@ function Match:deinit()
   for i = 1, #self.stacks do
     self.stacks[i]:deinit()
   end
-  ModController:releaseModsFor(self)
 end
 
 function Match:addPlayer(player)
@@ -404,14 +403,12 @@ end
 function Match:playCountdownSfx()
   if self.doCountdown then
     if self.clock < 200 then
-      local tickIndex = math.floor(self.clock / 60)
-      if not self.ticksPlayed[tickIndex] then
-        if tickIndex < 3 then
-          SoundController:playSfx(themes[config.theme].sounds.countdown)
-        else
+      if (self.clock - consts.COUNTDOWN_START) % 60 == 0 then
+        if self.clock == countdownEnd then
           SoundController:playSfx(themes[config.theme].sounds.go)
+        else
+          SoundController:playSfx(themes[config.theme].sounds.countdown)
         end
-        self.ticksPlayed[tickIndex] = true
       end
     end
   end
@@ -519,8 +516,6 @@ function Match:start()
     end
   end
 
-  self:setCountdown(self.doCountdown)
-
   if self.timeLimit then
     self.panicTicksPlayed = {}
     for i = 1, 15 do
@@ -537,6 +532,7 @@ function Match:start()
 end
 
 function Match:setStage(stageId)
+  logger.debug("Setting match stage id to " .. (stageId or ""))
   if stageId then
     -- we got one from the server
     self.stageId = StageLoader.fullyResolveStageSelection(stageId)
@@ -790,7 +786,4 @@ end
 
 function Match:setCountdown(doCountdown)
   self.doCountdown = doCountdown
-  if self.doCountdown then
-    self.ticksPlayed = { [0] = false, false, false, false }
-  end
 end

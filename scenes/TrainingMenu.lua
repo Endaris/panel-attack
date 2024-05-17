@@ -26,7 +26,7 @@ TrainingMenu.name = "TrainingMenu"
 sceneManager:addScene(TrainingMenu)
 
 local function exitMenu()
-  SoundController:playSfx(themes[config.theme].sounds.menu_validate)
+  GAME.theme:playCancelSfx()
   sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
 end
 
@@ -81,7 +81,7 @@ function TrainingMenu:load(sceneParams)
       values = garbagePatternValues,
       selectedIndex = 1,
       onChange = function(value)
-        Menu.playMoveSfx()
+        GAME.theme:playMoveSfx()
       end
     }
   )

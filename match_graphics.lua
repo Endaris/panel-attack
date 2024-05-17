@@ -116,8 +116,6 @@ function Match:render()
     end
   end
 
-  self:drawCommunityMessage()
-
   if config.debug_mode then
     local padding = 14
     local drawX = 500
@@ -168,7 +166,9 @@ function Match:render()
           GraphicsUtil.print(self.spectatorString, themes[config.theme].spectators_Pos[1], themes[config.theme].spectators_Pos[2])
         end
 
-        self:drawMatchType()
+        if tableUtils.trueForAll(self.players, function(p) return p.human end) or self.ranked then
+          self:drawMatchType()
+        end
       end
 
       self:drawTimer()
