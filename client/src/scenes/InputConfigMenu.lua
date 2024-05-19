@@ -14,6 +14,7 @@ local class = require("common.lib.class")
 local InputConfigMenu = class(
   function (self, sceneParams)
     self.backgroundImg = themes[config.theme].images.bg_main
+    self.music = "main"
     self.settingKey = false
     self.menu = nil -- set in load
     
@@ -184,12 +185,10 @@ function InputConfigMenu:load(sceneParams)
   menuOptions[#menuOptions + 1] = MenuItem.createButtonMenuItem("Clear All Inputs", nil, false, function() self:clearAllInputs() end)
   menuOptions[#menuOptions + 1] = MenuItem.createButtonMenuItem("Reset Keys To Default", nil, false, function() self:resetToDefault(menuOptions) end)
   menuOptions[#menuOptions + 1] = MenuItem.createButtonMenuItem("back", nil, nil, exitMenu)
-  
+
   self.menu = Menu.createCenteredMenu(menuOptions)
 
   self.uiRoot:addChild(self.menu)
-
-  SoundController:playMusic(themes[config.theme].stageTracks.main)
 end
 
 function InputConfigMenu:update(dt)

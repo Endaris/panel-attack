@@ -1,10 +1,32 @@
 local DirectTransition = require("client.src.scenes.Transitions.DirectTransition")
+local SoundController = require("client.src.music.SoundController")
+local tableUtils = require("common.lib.tableUtils")
 
 local NavigationStack = {
   scenes = {},
   transition = nil,
   callback = nil,
 }
+
+local sceneMusicLabels = { "title_screen", "main", "select_screen" }
+-- tries to apply the passed music with respect to the current theme's available musics
+local function applyMusic(music)
+  if music and tableUtils.contains(sceneMusicLabels, music) then
+    if GAME.theme.stageTracks[music] then
+      SoundController:playMusic(GAME.theme.stageTracks[music])
+      return true
+    end
+  end
+  return false
+end
+
+local function applySceneMusic(scene)
+  if not applyMusic(scene.music) then
+    if not applyMusic(scene.fallbackMusic) then
+      SoundController:stopMusic()
+    end
+  end
+end
 
 function NavigationStack:push(newScene, transition)
   local activeScene = self.scenes[#self.scenes]
@@ -135,6 +157,7 @@ function NavigationStack:update(dt)
         self.callback()
         self.callback = nil
       end
+      applySceneMusic(self.scenes[#self.scenes])
     end
   else
     if #self.scenes == 0 then

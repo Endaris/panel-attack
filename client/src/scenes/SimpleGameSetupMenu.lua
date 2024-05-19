@@ -15,6 +15,8 @@ local GameModes = require("common.engine.GameModes")
 local SimpleGameSetupMenu = class(
   function (self, sceneParams)
     self.backgroundImg = themes[config.theme].images.bg_main
+    self.music = "select_screen"
+    self.fallbackMusic = "main"
 
     -- must be set in child classes
     self.gameMode = nil
@@ -156,8 +158,6 @@ function SimpleGameSetupMenu:load(sceneParams)
   else
     self.uiRoot:addChild(self.modernMenu)
   end
-  
-  SoundController:playMusic(themes[config.theme].stageTracks.main)
 end
 
 function SimpleGameSetupMenu:update(dt)

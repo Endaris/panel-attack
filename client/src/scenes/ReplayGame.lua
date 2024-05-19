@@ -59,7 +59,7 @@ function ReplayGame:runGame()
       if self.match.isPaused then
         SoundController:pauseMusic()
       else
-        SoundController:playMusic()
+        SoundController:playMusic(self.musicSource.stageTrack)
       end
     end
   elseif input:isPressedWithRepeat("MenuRight") then

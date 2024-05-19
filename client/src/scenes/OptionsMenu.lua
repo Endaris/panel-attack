@@ -21,6 +21,7 @@ local GraphicsUtil = require("client.src.graphics.graphics_util")
 -- @module optionsMenu
 -- Scene for the options menu
 local OptionsMenu = class(function(self, sceneParams)
+  self.music = "main"
   self.activeMenuName = "baseMenu"
   self:load(sceneParams)
 end, Scene)
@@ -517,7 +518,6 @@ function OptionsMenu:load()
   self.menus = self:loadScreens()
 
   self.backgroundImage = themes[config.theme].images.bg_main
-  SoundController:playMusic(themes[config.theme].stageTracks.main)
   self.uiRoot:addChild(self.menus.baseMenu)
 end
 

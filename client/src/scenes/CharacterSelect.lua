@@ -26,6 +26,8 @@ local Character = require("client.src.mods.Character")
 -- The character select screen scene
 local CharacterSelect = class(function(self)
   self.backgroundImg = themes[config.theme].images.bg_select_screen
+  self.music = "select_screen"
+  self.fallbackMusic = "main"
   self:load()
 end, Scene)
 
@@ -46,24 +48,12 @@ end
 
 -- end abstract functions
 
-function CharacterSelect:playThemeMusic()
-  if themes[config.theme].stageTracks.select_screen then
-    SoundController:playMusic(themes[config.theme].stageTracks.select_screen)
-  else
-    SoundController:playMusic(themes[config.theme].stageTracks.main)
-  end
-end
-
 function CharacterSelect:load()
   self.ui = {}
   self.ui.cursors = {}
   self.ui.characterIcons = {}
   self.ui.playerInfos = {}
   self:customLoad()
-  -- assign input configs
-  -- ideally the local player can use all configs in menus until game start
-  -- but should be ok for now
-  self:playThemeMusic()
 end
 
 function CharacterSelect:createPlayerIcon(player)

@@ -18,6 +18,8 @@ local STATES = {Login = 1, Lobby = 2}
 -- @module Lobby
 -- expects a serverIp and serverPort as a param (unless already set in GAME.connected_server_ip & GAME.connected_server_port respectively)
 local Lobby = class(function(self, sceneParams)
+  self.music = "main"
+
   -- lobby data from the server
   self.playerData = nil
   self.unpairedPlayers = {} -- list
@@ -82,8 +84,6 @@ function Lobby:load(sceneParams)
   self.messageListeners["players"]:subscribe(self, self.updateLobbyState)
   self.messageListeners["game_request"] = MessageListener("game_request")
   self.messageListeners["game_request"]:subscribe(self, self.processGameRequest)
-
-  SoundController:playMusic(themes[config.theme].stageTracks.main)
 
   self:initLobbyMenu()
 end
