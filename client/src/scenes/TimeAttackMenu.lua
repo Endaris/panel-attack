@@ -1,5 +1,4 @@
 local SimpleGameSetupMenu = require("client.src.scenes.SimpleGameSetupMenu")
-local sceneManager = require("client.src.scenes.sceneManager")
 local class = require("common.lib.class")
 local GameModes = require("common.engine.GameModes")
 
@@ -16,7 +15,6 @@ local TimeAttackMenu = class(
 )
 
 TimeAttackMenu.name = "TimeAttackMenu"
-sceneManager:addScene(TimeAttackMenu)
 
 function TimeAttackMenu:getScores(difficulty)
   return {tostring(GAME.scores:lastTimeAttack1PForLevel(difficulty)), tostring(GAME.scores:recordTimeAttack1PForLevel(difficulty))}

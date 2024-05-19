@@ -6,7 +6,6 @@ local MenuItem = require("client.src.ui.MenuItem")
 local ButtonGroup = require("client.src.ui.ButtonGroup")
 local LevelSlider = require("client.src.ui.LevelSlider")
 local Label = require("client.src.ui.Label")
-local sceneManager = require("client.src.scenes.sceneManager")
 local class = require("common.lib.class")
 
 --@module puzzleMenu
@@ -25,7 +24,6 @@ local PuzzleMenu = class(
 )
 
 PuzzleMenu.name = "PuzzleMenu"
-sceneManager:addScene(PuzzleMenu)
 
 local BUTTON_WIDTH = 60
 local BUTTON_HEIGHT = 25
@@ -60,7 +58,7 @@ end
 function PuzzleMenu:exit()
   GAME.theme:playValidationSfx()
   GAME.battleRoom:shutdown()
-  sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
+  GAME.navigationStack:pop()
 end
 
 function PuzzleMenu:load(sceneParams)

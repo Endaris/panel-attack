@@ -241,6 +241,7 @@ function BattleRoom:shutdownNetwork()
     if self.online and GAME.tcpClient:isConnected() then
       GAME.tcpClient:sendRequest(ClientMessages.leaveRoom())
     end
+    GAME.tcpClient:resetNetwork()
   end
 
   self.setupListeners = nil

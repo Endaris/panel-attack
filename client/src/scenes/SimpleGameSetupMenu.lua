@@ -4,7 +4,6 @@ local TextButton = require("client.src.ui.TextButton")
 local Slider = require("client.src.ui.Slider")
 local Label = require("client.src.ui.Label")
 local LevelSlider = require("client.src.ui.LevelSlider")
-local sceneManager = require("client.src.scenes.sceneManager")
 local Menu = require("client.src.ui.Menu")
 local MenuItem = require("client.src.ui.MenuItem")
 local ButtonGroup = require("client.src.ui.ButtonGroup")
@@ -52,7 +51,7 @@ end
 function SimpleGameSetupMenu:exit()
   GAME.theme:playCancelSfx()
   GAME.battleRoom:shutdown()
-  sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
+  GAME.navigationStack:pop()
 end
 
 function SimpleGameSetupMenu:load(sceneParams)

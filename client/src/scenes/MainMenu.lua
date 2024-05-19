@@ -2,7 +2,6 @@ local Scene = require("client.src.scenes.Scene")
 local consts = require("common.engine.consts")
 local Menu = require("client.src.ui.Menu")
 local MenuItem = require("client.src.ui.MenuItem")
-local sceneManager = require("client.src.scenes.sceneManager")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
 local class = require("common.lib.class")
 local GameModes = require("common.engine.GameModes")
@@ -24,17 +23,17 @@ local DesignHelper = require("client.src.scenes.DesignHelper")
 -- @module MainMenu
 -- Scene for the main menu
 local MainMenu = class(function(self, sceneParams)
-  self.menu = nil -- set in load
   self.backgroundImg = themes[config.theme].images.bg_main
-  self:load(sceneParams)
+  self.music = "main"
+  self.menu = self:createMainMenu()
+  self.uiRoot:addChild(self.menu)
 end, Scene)
 
 MainMenu.name = "MainMenu"
-sceneManager:addScene(MainMenu)
 
 local function switchToScene(sceneName, transition)
   GAME.theme:playValidationSfx()
-  sceneManager:switchToScene(sceneName, transition)
+  GAME.navigationStack:push(sceneName, transition)
 end
 
 function MainMenu:createMainMenu()
@@ -118,15 +117,6 @@ function MainMenu:createMainMenu()
 
   addDebugMenuItems()
   return menu
-end
-
-function MainMenu:load(sceneParams)
-  self.menu = self:createMainMenu()
-  self.uiRoot:addChild(self.menu)
-
-  SoundController:playMusic(themes[config.theme].stageTracks.main)
-  GAME.tcpClient:resetNetwork()
-  GAME.battleRoom = nil
 end
 
 function MainMenu:update(dt)

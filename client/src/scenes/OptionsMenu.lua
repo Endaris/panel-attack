@@ -2,7 +2,6 @@ local Scene = require("client.src.scenes.Scene")
 local TextButton = require("client.src.ui.TextButton")
 local Slider = require("client.src.ui.Slider")
 local Label = require("client.src.ui.Label")
-local sceneManager = require("client.src.scenes.sceneManager")
 local Menu = require("client.src.ui.Menu")
 local MenuItem = require("client.src.ui.MenuItem")
 local ButtonGroup = require("client.src.ui.ButtonGroup")
@@ -27,7 +26,6 @@ local OptionsMenu = class(function(self, sceneParams)
 end, Scene)
 
 OptionsMenu.name = "OptionsMenu"
-sceneManager:addScene(OptionsMenu)
 
 local languageNumber
 local languageName = {}
@@ -74,7 +72,7 @@ function OptionsMenu.exit()
     end
   end
   GAME.theme:playValidationSfx()
-  sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
+  GAME.navigationStack:pop()
 end
 
 function OptionsMenu:updateMenuLanguage()
@@ -432,7 +430,7 @@ function OptionsMenu:loadSoundMenu()
       MenuItem.createStepperMenuItem("op_use_music_from", nil, nil, musicFrequencyStepper),
       MenuItem.createToggleButtonGroupMenuItem("op_music_delay", nil, nil, createToggleButtonGroup("danger_music_changeback_delay")),
     MenuItem.createButtonMenuItem("mm_music_test", nil, nil, function()
-        sceneManager:switchToScene(SoundTest())
+        GAME.navigationStack:push(SoundTest())
       end),
     MenuItem.createButtonMenuItem("back", nil, nil, function()
         GAME.theme:playCancelSfx()
@@ -504,7 +502,7 @@ function OptionsMenu:loadModifyUserIdMenu()
   local userIDDirectories = fileUtils.getFilteredDirectoryItems("servers")
   for i = 1, #userIDDirectories do
     modifyUserIdOptions[#modifyUserIdOptions + 1] = MenuItem.createButtonMenuItem(userIDDirectories[i], nil, false, function()
-          sceneManager:switchToScene(SetUserIdMenu({serverIp = userIDDirectories[i]}))
+        GAME.navigationStack:push(SetUserIdMenu({serverIp = userIDDirectories[i]}))
       end)
   end
   modifyUserIdOptions[#modifyUserIdOptions + 1] = MenuItem.createButtonMenuItem("back", nil, nil, function()

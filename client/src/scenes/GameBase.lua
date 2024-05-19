@@ -190,7 +190,7 @@ function GameBase:runGameOver()
   if ((displayTime >= self.maxDisplayTime and self.maxDisplayTime ~= -1) or (displayTime >= self.minDisplayTime and keyPressed)) then
     GAME.theme:playValidationSfx()
     SFX_GameOver_Play = 0
-    sceneManager:switchToScene(sceneManager:createScene(self.nextScene, self.nextSceneParams))
+    GAME.navigationStack:pop()
   end
 end
 
@@ -264,10 +264,8 @@ function GameBase:update(dt)
         self.match:abort()
         if GAME.tcpClient:isConnected() then
           GAME.battleRoom:shutdown()
-          sceneManager:switchToScene(sceneManager:createScene("Lobby"))
-        else
-          sceneManager:switchToScene(sceneManager:createScene("ReplayBrowser"))
         end
+        GAME.navigationStack:pop()
       end
     end
     self:runGame(dt)

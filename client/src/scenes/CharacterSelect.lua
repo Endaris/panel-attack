@@ -4,7 +4,6 @@ local class = require("common.lib.class")
 local tableUtils = require("common.lib.tableUtils")
 local GameModes = require("common.engine.GameModes")
 local Scene = require("client.src.scenes.Scene")
-local sceneManager = require("client.src.scenes.sceneManager")
 local StageCarousel = require("client.src.ui.StageCarousel")
 local LevelSlider = require("client.src.ui.LevelSlider")
 local PanelCarousel = require("client.src.ui.PanelCarousel")
@@ -778,8 +777,7 @@ function CharacterSelect:update(dt)
   end
   if GAME.battleRoom and GAME.battleRoom.spectating then
     if input.isDown["MenuEsc"] then
-      GAME.battleRoom:shutdown()
-      sceneManager:switchToScene(sceneManager:createScene("Lobby"))
+      GAME.navigationStack:pop(nil, function() GAME.battleRoom:shutdown() end)
     end
   end
   if self:customUpdate() then
@@ -794,11 +792,7 @@ function CharacterSelect:draw()
 end
 
 function CharacterSelect:leave()
-  if GAME.battleRoom then
-    -- in 2p local, with the current input shenanigans leave may be called twice
-    GAME.battleRoom:shutdown()
-    sceneManager:switchToScene(sceneManager:createScene("MainMenu"))
-  end
+  GAME.navigationStack:pop(nil, function() GAME.battleRoom:shutdown() end)
 end
 
 return CharacterSelect
