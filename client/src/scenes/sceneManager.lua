@@ -12,7 +12,7 @@ local sceneManager = {
 function sceneManager:switchToScene(newScene, transition)
   GAME.rich_presence:setPresence(nil, newScene.name, true)
   if not transition or type(transition) ~= "table" then
-    self.transition = DirectTransition(GAME.timer, 0, self.activeScene, newScene)
+    self.transition = DirectTransition(self.activeScene, newScene)
   else
     self.transition = transition
   end

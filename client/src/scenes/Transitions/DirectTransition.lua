@@ -1,7 +1,7 @@
 local class = require("common.lib.class")
 local Transition = require("client.src.scenes.Transitions.Transition")
 
-local DirectTransition = class(function(transition, startTime, duration, oldScene, newScene)
+local DirectTransition = class(function(transition, oldScene, newScene, startTime, duration)
 end,
 Transition)
 
