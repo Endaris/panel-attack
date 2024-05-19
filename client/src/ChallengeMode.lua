@@ -5,6 +5,7 @@ local GameModes = require("common.engine.GameModes")
 local MessageTransition = require("client.src.scenes.Transitions.MessageTransition")
 local levelPresets = require("client.src.LevelPresets")
 local Game1pChallenge = require("client.src.scenes.Game1pChallenge")
+require("client.src.BattleRoom")
 
 
 -- Challenge Mode is a particular play through of the challenge mode in the game, it contains all the settings for the mode.

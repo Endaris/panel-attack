@@ -264,6 +264,11 @@ end
 -- dt is the amount of time in seconds that has passed.
 function Game:update(dt)
   self.timer = love.timer.getTime()
+  if GAME.navigationStack.transition then
+    leftover_time = leftover_time + dt
+  else
+    leftover_time = 0
+  end
 
   if self.battleRoom then
     self.battleRoom:update(dt)
