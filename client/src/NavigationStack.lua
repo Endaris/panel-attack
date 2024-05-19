@@ -8,7 +8,6 @@ local NavigationStack = {
 
 function NavigationStack:push(newScene, transition)
   local activeScene = self.scenes[#self.scenes]
-
   if not transition then
     transition = DirectTransition()
   end
@@ -16,7 +15,15 @@ function NavigationStack:push(newScene, transition)
   transition.newScene = newScene
 
   self.transition = transition
-  self.scenes[#self.scenes+1] = newScene
+
+  if activeScene and activeScene.name == newScene.name then
+    -- a bit of a crutch for puzzlemode:
+    -- if the same scene is already on top of the stack
+    -- replace the current one instead of pushing on top
+    self.scenes[#self.scenes] = newScene
+  else
+    self.scenes[#self.scenes+1] = newScene
+  end
 end
 
 -- transitions to the previous scene optionally using a specified transition
