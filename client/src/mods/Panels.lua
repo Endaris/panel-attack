@@ -161,15 +161,15 @@ function Panels:loadSheets()
 end
 
 -- 
-function Panels:convertSinglesToSheetTexture(color, images)
-  local canvas = love.graphics.newCanvas(self.size * 10, self.size * #DEFAULT_PANEL_ANIM)
+function Panels:convertSinglesToSheetTexture(images)
+  local canvas = love.graphics.newCanvas(self.size * 10, self.size * #ANIMATION_STATES)
   canvas:renderTo(function()
     local row = 1
     -- ipairs over a static table so the ordering is definitely consistent
     for _, animationState in ipairs(ANIMATION_STATES) do
       local animationConfig = self.animationConfig[animationState]
       for frameNumber, imageIndex in ipairs(animationConfig.frames) do
-        love.graphics.draw(images[color][imageIndex], self.size * (frameNumber - 1), self.size * (row - 1))
+        love.graphics.draw(images[imageIndex], self.size * (frameNumber - 1), self.size * (row - 1))
       end
       row = row + 1
     end
@@ -192,13 +192,13 @@ function Panels:loadSingles()
     end)
 
     for i, file in ipairs(files) do
-      local index = tonumber(string.match(files[i], "%d+", 6))
-      images[color][index] = load_panel_img(self.path, file)
+      local index = tonumber(string.match(files[i], tostring(color) .. "%d+", 6):sub(2))
+      images[color][index] = load_panel_img(self.path, fileUtils.getFileNameWithoutExtension(file))
     end
   end
 
   for color, panelImages in ipairs(images) do
-    self.sheets[color] = self:convertSinglesToSheetTexture(color, panelImages)
+    self.sheets[color] = self:convertSinglesToSheetTexture(panelImages)
   end
 
   for i, animationState in ipairs(ANIMATION_STATES) do
@@ -206,7 +206,7 @@ function Panels:loadSingles()
     {
       row = i,
       durationPerFrame = self.animationConfig[animationState].durationPerFrame or 2,
-      frames = #self.animationConfig[animationState]
+      frames = #self.animationConfig[animationState].frames
     }
     self.sheetConfig[animationState].totalFrames =
         self.sheetConfig[animationState].frames * self.sheetConfig[animationState].durationPerFrame
@@ -221,10 +221,10 @@ function Panels:load()
   self.scale = 48 / self.size
 
   self.images.metals = {
-    left = load_panel_img("metalend0"),
-    mid = load_panel_img("metalmid"),
-    right = load_panel_img("metalend1"),
-    flash = load_panel_img("garbageflash")
+    left = load_panel_img(self.path, "metalend0"),
+    mid = load_panel_img(self.path, "metalmid"),
+    right = load_panel_img(self.path, "metalend1"),
+    flash = load_panel_img(self.path, "garbageflash")
   }
 
   if self.type == "single" then
@@ -313,7 +313,7 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
   if panel.color == 9 then
     love.graphics.draw(self.greyPanel, x, y, 0, self.scale)
   else
-    local batch = self.sheets[panel.color].batch
+    local batch = self.batches[panel.color]
     local conf
     local frame
     if panel.state == "normal" then
@@ -343,7 +343,7 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
     elseif panel.state == "matched" then
       -- divide between flash and face
       -- matched timer counts down to 0
-      local flashTime = self.levelData.frameConstants.FACE - panel.timer
+      local flashTime = panel.frameTimes.FACE - panel.timer
       if flashTime >= 0 then
         conf = self.sheetConfig.face
         frame = ceil((panel.timer % conf.totalFrames) / conf.durationPerFrame)
@@ -357,12 +357,25 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
         -- in dem fall 
         frame = ceil((flashTime % conf.totalFrames) / conf.durationPerFrame)
       end
+    elseif panel.state == "swapping" then
+      conf = self.sheetConfig.swapping
+      frame = (clock / conf.durationPerFrame) % conf.frames
+      if panel.isSwappingFromLeft then
+        x = x - panel.timer * 4
+      else
+        x = x + panel.timer * 4
+      end
     elseif panel.state == "popped" then
       -- draw nothing
+      return
     else
       conf = self.sheetConfig[panel.state]
       if panel.state == "landing" then
         -- landing counts down from 12, ending at 0
+        frame = panel.timer
+      else
+        frame = (clock / conf.durationPerFrame) % conf.frames
+        frame = ceil((clock % conf.totalFrames) / conf.durationPerFrame)
       end
     end
 
@@ -374,6 +387,12 @@ end
 function Panels:draw()
   for color = 1, 8 do
     love.graphics.draw(self.batches[color])
+  end
+end
+
+function Panels:prepareDraw()
+  for color = 1, 8 do
+    self.batches[color]:clear()
   end
 end
 

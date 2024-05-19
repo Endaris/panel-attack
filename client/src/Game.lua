@@ -107,6 +107,7 @@ function Game:load(gameUpdater)
 end
 
 function Game:setupRoutine()
+  coroutine.yield(coroutine.running())
   -- loading various assets into the game
   coroutine.yield("Loading localization...")
   Localization.init(localization)

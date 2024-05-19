@@ -6,21 +6,19 @@ local TitleScreen = require("client.src.scenes.TitleScreen")
 local MainMenu = require("client.src.scenes.MainMenu")
 
 local StartUp = class(function(scene, sceneParams)
-  scene.setupRoutine = coroutine.create(sceneParams.setupRoutine)
+  scene.run = coroutine.wrap(sceneParams.setupRoutine)
+  -- the wrapping functions returns its coroutine on the first yield
+  scene.setupRoutine = scene.run(GAME)
   scene.message = "Startup"
 end, Scene)
 
 StartUp.name = "StartUp"
 
 function StartUp:update(dt)
-  local success, status = coroutine.resume(self.setupRoutine, GAME)
-  if success then
-    if status then
-      self.message = status
-    end
-  else
-    GAME.crashTrace = debug.traceback(self.setupRoutine)
-    error(status)
+  local status = self.run(GAME)
+
+  if status then
+    self.message = status
   end
 
   if coroutine.status(self.setupRoutine) == "dead" then

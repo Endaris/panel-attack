@@ -1,5 +1,3 @@
-require("util")
-require("graphics.animated_sprite")
 -- clears information relating to state, matches and various stuff
 -- a true argument must be supplied to clear the chaining flag as well
 local function clear_flags(panel, clearChaining)
@@ -659,10 +657,6 @@ function Panel.update(self, panels)
     dimmedState.update(self, panels)
   elseif self.state == "dead" then
     deadState.update(self, panels)
-  end
-
-  if self.color ~= 0 then
-    self.animation[self.color]:update(self)
   end
 end
 
