@@ -6,10 +6,10 @@ local consts = require("common.engine.consts")
 local floor = math.floor
 
 -- frames to use for bounce animation
-local BOUNCE_TABLE = {1, 1, 1, 1,
-                2, 2, 2,
-                3, 3, 3,
-                4, 4, 4}
+local BOUNCE_TABLE = {1, 1, 1,
+                      2, 2, 2,
+                      3, 3, 3,
+                      4, 4, 4}
 
 -- frames to use for garbage bounce animation
 local GARBAGE_BOUNCE_TABLE = {2, 2, 2,
@@ -18,7 +18,7 @@ local GARBAGE_BOUNCE_TABLE = {2, 2, 2,
                               1, 1}
 
 -- frames to use for in danger animation
-local DANGER_BOUNCE_TABLE = {1, 1, 1,
+local DANGER_BOUNCE_TABLE = { 1, 1, 1,
                               2, 2, 2,
                               3, 3, 3,
                               2, 2, 2,
@@ -984,7 +984,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
           elseif panel.state == "popping" then
             draw_frame = 6
           elseif panel.state == "landing" then
-            draw_frame = BOUNCE_TABLE[panel.timer + 1]
+            draw_frame = BOUNCE_TABLE[panel.timer]
           elseif panel.state == "swapping" then
             if panel.isSwappingFromLeft then
               draw_x = draw_x - panel.timer * 4

@@ -15,8 +15,8 @@ local DEFAULT_PANEL_ANIM =
 {
   -- loops
 	normal = {frames = {1}},
-  -- doesn't loop, fixed duration of 12 frames
-	landing = {frames = {4, 3, 2, 1}, durationPerFrame = 3},
+  -- doesn't loop, fixed duration of 12 frames, animates backwards
+	landing = {frames = {1, 2, 3, 4}, durationPerFrame = 3},
   -- doesn't loop, fixed duration of 4 frames
   swapping = {frames = {1}},
   -- loops
@@ -33,7 +33,7 @@ local DEFAULT_PANEL_ANIM =
   dimmed = {frames = {7}},
   -- doesn't loop
 	dead = {frames = {6}},
-  -- loops; frames play back to front
+  -- loops; frames play back to front, fixed to 18 frames
   -- danger is special in that there is a frame offset depending on column offset
   -- col 1 and 2 start on frame 3, col 3 and 4 start on frame 4 and col 5 and 6 start on frame 5 of the animation
 	danger = {frames = {1, 2, 3, 2, 1, 4}, durationPerFrame = 3},
@@ -320,16 +320,16 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
       if panel.fell_from_garbage then
         conf = self.sheetConfig.garbageBounce
         -- fell_from_garbage counts down from 12 to 0
-        if panel.fell_from_garbage <= 0 then
+        if panel.fell_from_garbage > 0 then
           frame = conf.frames
         else
-          frame = ceil(panel.fell_from_garbage / conf.durationPerFrame)
+          frame = 1
         end
       elseif danger ~= nil then
         if danger == false then
           conf = self.sheetConfig.danger
           -- danger_timer counts down from 18 or 15 to 0, depending on what triggered it and then wrapping back to 18
-          frame = wrap(1, self.danger_timer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames)
+          frame = wrap(1, dangerTimer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames)
         else
           conf = self.sheetConfig.panic
           frame = (clock / conf.durationPerFrame) % conf.frames
@@ -362,7 +362,7 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
     else
       conf = self.sheetConfig[panel.state]
       if panel.state == "landing" then
-        -- landing counts down from 13, ending at 0
+        -- landing counts down from 12, ending at 0
       end
     end
 
