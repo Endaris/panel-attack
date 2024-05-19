@@ -8,7 +8,7 @@ local GameModes = require("common.engine.GameModes")
 local TimeAttackGame = class(
   function (self, sceneParams)
     self.nextScene = "TimeAttackMenu"
-    
+
     self:load(sceneParams)
     self.match:connectSignal("matchEnded", self, self.onMatchEnded)
   end,

@@ -36,7 +36,7 @@ local SimpleGameSetupMenu = class(
 -- begin abstract functions
 
 -- returns the scores for the current game mode in the form {last score, record score}
-function SimpleGameSetupMenu:getScores() return {"", ""} end
+function SimpleGameSetupMenu:getScores(difficulty) return {"", ""} end
 
 -- end abstract functions
 

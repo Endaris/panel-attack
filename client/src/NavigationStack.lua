@@ -61,6 +61,39 @@ function NavigationStack:popToTop(transition, callback)
   end
 end
 
+-- transitions to the first scene in the stack with the given name optionally using a specified transition
+-- if none is found, this pops to top instead
+-- an optional callback may be passed that is called when the transition completed
+function NavigationStack:popToName(name, transition, callback)
+  local targetScene
+  local targetIndex
+  for i = #self.scenes - 1, 1, -1 do
+    if self.scenes[i].name == name then
+      targetIndex = i
+      targetScene = self.scenes[i]
+    end
+  end
+
+  if not targetScene then
+    self:popToTop(transition, callback)
+  else
+    local activeScene = self.scenes[#self.scenes]
+
+    if not transition then
+      transition = DirectTransition()
+    end
+    transition.oldScene = activeScene
+    transition.newScene = targetScene
+
+    self.transition = transition
+    self.callback = callback
+
+    for i = #self.scenes, targetIndex + 1, -1 do
+      self.scenes[i] = nil
+    end
+  end
+end
+
 -- transitions to the newScene, optionally using a specified transition while removing the current scene from the stack
 -- an optional callback may be passed that is called when the transition completed
 function NavigationStack:replace(newScene, transition, callback)
@@ -75,6 +108,14 @@ function NavigationStack:replace(newScene, transition, callback)
   self.transition = transition
   self.callback = callback
   self.scenes[#self.scenes] = newScene
+end
+
+function NavigationStack:getActiveScene()
+  if self.transition then
+    return nil
+  else
+    return self.scenes[#self.scenes]
+  end
 end
 
 function NavigationStack:update(dt)
