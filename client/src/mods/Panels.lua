@@ -241,69 +241,6 @@ function Panels:load()
   self.quad = love.graphics.newQuad(0, 0, self.size, self.size, self.sheets[1])
 end
 
-local function switchFunc(self, panel)
-  local floor = math.floor
-  local state = panel.state
-  local col = panel.column
-  local row = panel.row
-  local isMetal = panel.metal
-  local dangerCount = #panel.animation[panel.color].animations["danger"].quads or 1
-  local switch = "normal"
-  local frame = 1
-  local wait = false
-  if state == "matched" then
-    local flash_time = self.FRAMECOUNTS.MATCH - panel.timer
-    if flash_time >= self.FRAMECOUNTS.FLASH then
-      switch = "matched"
-    else
-      switch = "flash"
-    end
-
-    if isMetal and (not panel.timer > panel.pop_time) and panel.y_offset == -1 then
-        switch = "fromGarbage"
-    end
-  elseif state == "popping" then
-    switch = "popping"
-
-  elseif panel.state == "falling" then
-    switch = "falling"
-  
-  elseif state == "landing" then
-    switch = "landing"
-
-  elseif state == "swapping" and not isMetal then
-    if panel.isSwappingFromLeft then
-      switch = "swappingLeft"
-    else
-      switch = "swappingRight"
-    end
-  elseif state == "dead" then
-    switch = "dead"
-  elseif state == "dimmed" and not isMetal then
-    switch = "dimmed"
-  elseif panel.fell_from_garbage then
-    switch = "fromGarbage"
-  elseif self.danger_col and self.danger_col[col] then
-    if self.hasPanelsInTopRow(self) and self.health > 0 then
-      switch = "panic"
-    else
-      switch = "danger"
-      frame = wrap(1, floor(self.danger_timer) + floor((col - 1) / 2), dangerCount)
-    end
-  elseif row == self.cur_row and (col == self.cur_col or col == self.cur_col+1) and not isMetal then
-    switch = "hover" 
-    wait = panel.currentAnim ~= "normal"
-  elseif panel.currentAnim ~= "hover" then
-    wait = true
-  end
-  if isMetal and state == "matched" and
-    (not panel.timer > panel.pop_time) and panel.y_offset == -1 then
-        switch = "fromGarbage"
-        wait = false
-  end
-  panel.animation[panel.color]:switchAnimation(panel, switch, wait, frame)
-end
-
 local function shouldFlashForFrame(frame)
   local flashFrames = 1
   flashFrames = 2 -- add config
@@ -332,59 +269,76 @@ local DANGER_BOUNCE_TABLE = {1, 1, 1,
 
 local oldDrawImplementation = function(panelSet, panel, x, y, danger_col, col, dangerTimer)
   local draw_frame = 1
-  if panel.state == "matched" then
-    local flash_time = panel.frameTimes.FACE - panel.timer
-    if flash_time >= 0 then
-      draw_frame = 6
-    elseif shouldFlashForFrame(flash_time) == false then
-      draw_frame = 1
-    else
-      draw_frame = 5
+  if panel.isGarbage then
+    if panel.state == "matched" then
+      local flash_time = panel.initial_time - panel.timer
+      if flash_time >= panel.frameTimes.FLASH then
+        if panel.timer > panel.pop_time then
+          if panel.metal then
+          else
+          end
+        elseif panel.y_offset == -1 then
+          draw_frame = 1
+          -- hardcoded reference to panel 1
+          -- GraphicsUtil.drawGfxScaled(panels[self.panels_dir].images.classic[panel.color][1], draw_x, draw_y, 0, 16 / p_w, 16 / p_h)
+        end
+      end
     end
-  elseif panel.state == "popping" then
-    draw_frame = 6
-  elseif panel.state == "landing" then
-    draw_frame = BOUNCE_TABLE[panel.timer + 1]
-  elseif panel.state == "swapping" then
-    if panel.isSwappingFromLeft then
-      x = x - panel.timer * 4
-    else
-      x = x + panel.timer * 4
-    end
-  elseif panel.state == "dead" then
-    draw_frame = 6
-  elseif panel.state == "dimmed" then
-    draw_frame = 7
-  elseif panel.fell_from_garbage then
-    draw_frame = GARBAGE_BOUNCE_TABLE[panel.fell_from_garbage] or 1
-  elseif danger_col[col] then
-    draw_frame = DANGER_BOUNCE_TABLE[wrap(1, dangerTimer + 1 + math.floor((col - 1) / 2), #DANGER_BOUNCE_TABLE)]
   else
-    draw_frame = 1
+    if panel.state == "matched" then
+      local flash_time = panel.frameTimes.FACE - panel.timer
+      if flash_time >= 0 then
+        draw_frame = 6
+      elseif shouldFlashForFrame(flash_time) == false then
+        draw_frame = 1
+      else
+        draw_frame = 5
+      end
+    elseif panel.state == "popping" then
+      draw_frame = 6
+    elseif panel.state == "landing" then
+      draw_frame = BOUNCE_TABLE[panel.timer + 1]
+    elseif panel.state == "swapping" then
+      if panel.isSwappingFromLeft then
+        x = x - panel.timer * 4
+      else
+        x = x + panel.timer * 4
+      end
+    elseif panel.state == "dead" then
+      draw_frame = 6
+    elseif panel.state == "dimmed" then
+      draw_frame = 7
+    elseif panel.fell_from_garbage then
+      draw_frame = GARBAGE_BOUNCE_TABLE[panel.fell_from_garbage] or 1
+    elseif danger_col[col] then
+      draw_frame = DANGER_BOUNCE_TABLE[wrap(1, dangerTimer + 1 + math.floor((col - 1) / 2), #DANGER_BOUNCE_TABLE)]
+    else
+      draw_frame = 1
+    end
   end
 
   return draw_frame
 end
 
 
-local ceil = math.ceil
 local floor = math.floor
+
+local function getGarbageBounceProps(panelSet, panel)
+  local conf = panelSet.sheetConfig.garbageBounce
+  -- fell_from_garbage counts down from 12 to 0
+  if panel.fell_from_garbage > 0 then
+    return conf, floor((12 - panel.fell_from_garbage) / conf.durationPerFrame) + 1
+  else
+    return conf, 1
+  end
+end
 
 function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
   local conf
   local frame
   local animationName
   if panel.state == "normal" then
-    if panel.fell_from_garbage then
-      conf = self.sheetConfig.garbageBounce
-      animationName = "garbageBounce"
-      -- fell_from_garbage counts down from 12 to 0
-      if panel.fell_from_garbage > 0 then
-        frame = floor((12 - panel.fell_from_garbage) / conf.durationPerFrame) + 1
-      else
-        frame = 1
-      end
-    elseif danger ~= nil then
+    if danger ~= nil then
       if danger == false then
         animationName = "danger"
         conf = self.sheetConfig.danger
@@ -403,28 +357,34 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
       frame = 1
     end
   elseif panel.state == "matched" then
-    -- divide between flash and face
-    -- matched timer counts down to 0
-    if panel.timer <= panel.frameTimes.FACE then
-      animationName = "face"
-      conf = self.sheetConfig.face
-      local faceTime = (panel.frameTimes.FACE - panel.timer)
-      -- nonlooping animation that is counting up
-      if faceTime < conf.totalFrames then
-        -- starting at the beginning of the timer
-        -- floor and +1 because the timer starts at 0 (could instead also +1 the timer and ceil)
-        frame = floor(faceTime / conf.durationPerFrame) + 1
-      else
-        -- and then sticking to the final frame for the remainder
-        frame = conf.frames
-      end
+    if panel.isGarbage then
+      animationName = "normal"
+      conf = self.sheetConfig.normal
+      frame = 1
     else
-      animationName = "flash"
-      conf = self.sheetConfig.flash
-      -- matched panels flash until they counted down to panel.frameConstants.FACE
-      -- so to find out which frame of flash we're on, add face and subtract the timer
-      local flashTime = panel.frameTimes.FLASH + panel.frameTimes.FACE - panel.timer
-      frame = floor((flashTime % conf.totalFrames) / conf.durationPerFrame) + 1
+      -- divide between flash and face
+      -- matched timer counts down to 0
+      if panel.timer <= panel.frameTimes.FACE then
+        animationName = "face"
+        conf = self.sheetConfig.face
+        local faceTime = (panel.frameTimes.FACE - panel.timer)
+        -- nonlooping animation that is counting up
+        if faceTime < conf.totalFrames then
+          -- starting at the beginning of the timer
+          -- floor and +1 because the timer starts at 0 (could instead also +1 the timer and ceil)
+          frame = floor(faceTime / conf.durationPerFrame) + 1
+        else
+          -- and then sticking to the final frame for the remainder
+          frame = conf.frames
+        end
+      else
+        animationName = "flash"
+        conf = self.sheetConfig.flash
+        -- matched panels flash until they counted down to panel.frameConstants.FACE
+        -- so to find out which frame of flash we're on, add face and subtract the timer
+        local flashTime = panel.frameTimes.FLASH + panel.frameTimes.FACE - panel.timer
+        frame = floor((flashTime % conf.totalFrames) / conf.durationPerFrame) + 1
+      end
     end
   elseif panel.state == "swapping" then
     animationName = "swapping"
@@ -444,9 +404,14 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
     -- landing always counts down from 12, ending at 0
     frame = floor((12 - panel.timer) / conf.durationPerFrame) + 1
   elseif panel.state == "hovering" then
-    animationName = "hovering"
-    conf = self.sheetConfig.hovering
-    frame = 1
+    if panel.fell_from_garbage then
+      animationName = "garbageBounce"
+      conf, frame = getGarbageBounceProps(self, panel)
+    else
+      animationName = "hovering"
+      conf = self.sheetConfig.hovering
+      frame = 1
+    end
     -- hover is too short to reasonably animate (as short as 3 frames)
     -- if conf.frames == 1 then
     --   frame = 1
@@ -457,10 +422,15 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
     --   frame = math.abs(frame - conf.frames) + 1
     -- end
   elseif panel.state == "falling" then
-    animationName = "falling"
-    conf = self.sheetConfig.falling
-    -- falling has no timer at the moment, therefore restricted to 1 frame
-    frame = 1
+    if panel.fell_from_garbage then
+      animationName = "garbageBounce"
+      conf, frame = getGarbageBounceProps(self, panel)
+    else
+      animationName = "falling"
+      conf = self.sheetConfig.falling
+      -- falling has no timer at the moment, therefore restricted to 1 frame
+      frame = 1
+    end
   elseif panel.state == "popping" then
     animationName = "popping"
     -- popping runs at the end of its timer, not at the start
@@ -491,9 +461,19 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
   -- on levels with FLASH % 4 == 0 it would start with frame 5
   -- on levels with FLASH % 4 == 2 it would start with frame 1
   -- new baseline will be for it to always start with frame 5 to communicate earlier that the panels matched
+  -- with level 8 (FLASH % 4 == 0), this condition can removed and it all validates
+  -- but with level 10 (FLASH % 4 == 2), it fails on every single flash
     and conf ~= self.sheetConfig.flash
+    -- these used to have no own animation, being entirely governed by fell_from_garbage
+    -- it's possible to have them use fell_from_garbage again
+    -- but that would mean 
+    -- a) they're still not animatable on their own
+    -- b) fell from garbage is kind of trash because it starts with the normal frame
+    --    so it's super intransparent when panels below cannot be swapped anymore
+    --and conf ~= self.sheetConfig.hovering
+    --and conf ~= self.sheetConfig.falling
     then
-    
+
     local oldFrame = oldDrawImplementation(self, panel, x, y, {}, panel.column, dangerTimer)
     assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
   end

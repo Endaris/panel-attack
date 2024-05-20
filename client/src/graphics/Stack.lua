@@ -895,7 +895,6 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
       local draw_x = 4 + (col - 1) * 16
       local draw_y = 4 + (11 - (row)) * 16 + self.displacement - shakeOffset
       if panel.color ~= 0 and panel.state ~= "popped" then
-        local draw_frame = 1
         if panel.isGarbage then
           local imgs = {flash = shockGarbageImages.flash}
           if not panel.metal then
@@ -958,8 +957,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                   GraphicsUtil.drawGfxScaled(imgs.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
                 end
               elseif panel.y_offset == -1 then
-                local p_w, p_h = panels[self.panels_dir].images.classic[panel.color][1]:getDimensions()
-                GraphicsUtil.drawGfxScaled(panels[self.panels_dir].images.classic[panel.color][1], draw_x, draw_y, 0, 16 / p_w, 16 / p_h)
+                panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE)
               end
             elseif shouldFlashForFrame(flash_time) == false then
               if panel.metal then
@@ -986,9 +984,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                 danger = false
               end
           end
-          -- if self.clock == 366 and panel.id == 117 then
-          --   local phi = 5
-          -- end
+
           panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, danger, self.danger_timer)
         end
       end
