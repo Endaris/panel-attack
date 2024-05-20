@@ -475,44 +475,23 @@ function Panels:getDrawProps(panel, x, y, dangerCol, dangerTimer)
     frame = 1
   end
 
-  if 
-  -- danger and panic were previously the same via timer manipulation so it won't be the exact same in terms of values
-  -- for all others the drawn frame HAS to match the old implementation
-  --conf ~= self.sheetConfig.danger and conf ~= self.sheetConfig.panic
+  -- verify that the default frame we get from the new config and the old frame are the same
+  if conf ~= self.sheetConfig.flash then
   -- flash in particular started on a different frame depending on level
   -- on levels with FLASH % 4 == 0 it would start with frame 5
   -- on levels with FLASH % 4 == 2 it would start with frame 1
   -- new baseline will be for it to always start with frame 5 to communicate earlier that the panels matched
   -- with level 8 (FLASH % 4 == 0), this condition can removed and it all validates
   -- but with level 10 (FLASH % 4 == 2), it fails on every single flash
-    --and 
-    conf ~= self.sheetConfig.flash
-    -- these used to have no own animation, being entirely governed by fell_from_garbage
-    -- it's possible to have them use fell_from_garbage again
-    -- but that would mean 
-    -- a) they're still not animatable on their own
-    -- b) fell from garbage is kind of trash because it starts with the normal frame
-    --    so it's super intransparent when panels below cannot be swapped anymore
-    --and conf ~= self.sheetConfig.hovering
-    --and conf ~= self.sheetConfig.falling
-    then
 
-    --local oldFrame = oldDrawImplementation(self, panel, x, y, dangerCol, panel.column, dangerTimer)
-    --assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
+    -- local oldFrame = oldDrawImplementation(self, panel, x, y, dangerCol, panel.column, dangerTimer)
+    -- assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
   end
 
   return conf, frame, x, y
 end
 
-function Panels:drawPanelFrame(color, state, x, y, size)
-  local sheetConfig = self.sheetConfig[state]
-  -- always draw the first frame
-  self.quad:setViewport(0, (sheetConfig.row - 1) * self.size, self.size, self.size)
-  local scale = (size or self.size) / self.size
-  GraphicsUtil.drawQuad(self.sheets[color], self.quad, x, y, 0, scale)
-end
-
--- draws the panel
+-- adds the panel to a batch for later drawing
 -- x, y: relative coordinates on the stack canvas
 -- clock: Stack.clock to calculate animation frames
 -- danger: nil - no danger, false - regular danger, true - panic
@@ -530,16 +509,27 @@ function Panels:addToDraw(panel, x, y, danger, dangerTimer)
   end
 end
 
+-- draws all panel draws that have been added to the batch thus far
 function Panels:drawBatch()
   for color = 1, 8 do
     love.graphics.draw(self.batches[color])
   end
 end
 
+-- clears the last batch
 function Panels:prepareDraw()
   for color = 1, 8 do
     self.batches[color]:clear()
   end
+end
+
+-- draws the first frame of a panel's state and color in the specified size at the passed location
+function Panels:drawPanelFrame(color, state, x, y, size)
+  local sheetConfig = self.sheetConfig[state]
+  -- always draw the first frame
+  self.quad:setViewport(0, (sheetConfig.row - 1) * self.size, self.size, self.size)
+  local scale = (size or self.size) / self.size
+  GraphicsUtil.drawQuad(self.sheets[color], self.quad, x, y, 0, scale)
 end
 
 return Panels
