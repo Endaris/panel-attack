@@ -49,7 +49,6 @@ Panels =
   function(self, full_path, folder_name)
     self.path = full_path -- string | path to the panels folder content
     self.id = folder_name -- string | id of the panel set, is also the name of its folder by default, may change in json_init
-    self.sheet = false
     self.images = {}
     -- sprite sheets indexed by color
     self.sheets = {}
@@ -114,11 +113,6 @@ function panels_init()
     fileUtils.recursiveCopy("client/assets/default_data/panels", "panels")
     config.defaultPanelsCopied = true
     add_panels_from_dir_rec("panels")
-  end
-
-  -- add pacci panels if not installed
-  if not panels["pacci"] then
-    add_panels_from_dir_rec("client/assets/panels/__default")
   end
 
   -- fix config panel set if it's missing

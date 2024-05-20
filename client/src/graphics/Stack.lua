@@ -5,26 +5,6 @@ local consts = require("common.engine.consts")
 
 local floor = math.floor
 
--- frames to use for bounce animation
-local BOUNCE_TABLE = {1, 1, 1, 1,
-                2, 2, 2,
-                3, 3, 3,
-                4, 4, 4}
-
--- frames to use for garbage bounce animation
-local GARBAGE_BOUNCE_TABLE = {2, 2, 2,
-                              3, 3, 3,
-                              4, 4, 4,
-                              1, 1}
-
--- frames to use for in danger animation
-local DANGER_BOUNCE_TABLE = {1, 1, 1,
-                              2, 2, 2,
-                              3, 3, 3,
-                              2, 2, 2,
-                              1, 1, 1,
-                              4, 4, 4}
-
 -- The popping particle animation. First number is how far the particles go, second is which frame to show from the spritesheet
 local POPFX_BURST_ANIMATION = {{1, 1}, {4, 1}, {7, 1}, {8, 1}, {9, 1}, {9, 1},
                                {10, 1}, {10, 2}, {10, 2}, {10, 3}, {10, 3}, {10, 4},
@@ -174,7 +154,7 @@ function Stack.update_popfxs(self)
   if self.canvas == nil then
     return
   end
-  
+
   for i = self.pop_q.first, self.pop_q.last do
     local popfx = self.pop_q[i]
     if characters[self.character].popfx_style == "burst" or characters[self.character].popfx_style == "fadeburst" then
@@ -212,7 +192,7 @@ function Stack.drawPopEffects(self)
     local drawY = (self.panelOriginY) + (self.height - 1 - popfx.y) * panelSize + self.displacement
 
     GraphicsUtil.setColor(1, 1, 1, self:opacityForFrame(popfx.frame, 1, 8))
-    
+
     if characters[self.character].popfx_style == "burst" or characters[self.character].popfx_style == "fadeburst" then
       if characters[self.character].images["burst"] then
         if POPFX_BURST_ANIMATION[popfx.frame] then
