@@ -154,6 +154,9 @@ function Panels:loadSheets()
   end
   self.sheetConfig = self.animationConfig
   for i, animationState in ipairs(ANIMATION_STATES) do
+    if not self.sheetConfig[animationState].durationPerFrame then
+      self.sheetConfig[animationState].durationPerFrame = 2
+    end
     self.sheetConfig[animationState].totalFrames =
         self.sheetConfig[animationState].frames * self.sheetConfig[animationState].durationPerFrame
   end
