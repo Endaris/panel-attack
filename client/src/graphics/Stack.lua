@@ -973,19 +973,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
             end
           end
         else
-          local danger
-
-          if panel.state == "normal" and self.danger_col[col] then
-            if self.panels_in_top_row and self.speed ~= 0 and not self.puzzle then
-              -- panic
-                danger = true
-              else
-                -- regular danger
-                danger = false
-              end
-          end
-
-          panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, danger, self.danger_timer)
+          panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.danger_col, self.danger_timer)
         end
       end
     end

@@ -333,23 +333,21 @@ local function getGarbageBounceProps(panelSet, panel)
   end
 end
 
-function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
+local function getDangerBounceProps(panelSet, panel, dangerTimer)
+  local conf = panelSet.sheetConfig.danger
+  -- danger_timer counts down from 18 or 15 to 0, depending on what triggered it and then wrapping back to 18
+  local frame = math.ceil(wrap(1, dangerTimer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames) / conf.durationPerFrame)
+  return conf, frame
+end
+
+function Panels:getDrawProps(panel, x, y, dangerCol, dangerTimer)
   local conf
   local frame
   local animationName
   if panel.state == "normal" then
-    if danger ~= nil then
-      if danger == false then
-        animationName = "danger"
-        conf = self.sheetConfig.danger
-        -- danger_timer counts down from 18 or 15 to 0, depending on what triggered it and then wrapping back to 18
-        frame = math.ceil(wrap(1, dangerTimer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames) / conf.durationPerFrame)
-      else
-        animationName = "panic"
-        -- panic has no timer at the moment, therefore restricted to 1 frame
-        conf = self.sheetConfig.panic
-        frame = 1
-      end
+    if dangerCol[panel.column] then
+      animationName = "danger"
+      conf, frame = getDangerBounceProps(self, panel, dangerTimer)
     else
       animationName = "normal"
       -- normal has no timer at the moment, therefore restricted to 1 frame
@@ -407,6 +405,9 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
     if panel.fell_from_garbage then
       animationName = "garbageBounce"
       conf, frame = getGarbageBounceProps(self, panel)
+    elseif dangerCol[panel.column] then
+      animationName = "danger"
+      conf, frame = getDangerBounceProps(self, panel, dangerTimer)
     else
       animationName = "hovering"
       conf = self.sheetConfig.hovering
@@ -425,6 +426,9 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
     if panel.fell_from_garbage then
       animationName = "garbageBounce"
       conf, frame = getGarbageBounceProps(self, panel)
+    elseif dangerCol[panel.column] then
+      animationName = "danger"
+      conf, frame = getDangerBounceProps(self, panel, dangerTimer)
     else
       animationName = "falling"
       conf = self.sheetConfig.falling
@@ -456,14 +460,15 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
   if 
   -- danger and panic were previously the same via timer manipulation so it won't be the exact same in terms of values
   -- for all others the drawn frame HAS to match the old implementation
-  conf ~= self.sheetConfig.danger and conf ~= self.sheetConfig.panic
+  --conf ~= self.sheetConfig.danger and conf ~= self.sheetConfig.panic
   -- flash in particular started on a different frame depending on level
   -- on levels with FLASH % 4 == 0 it would start with frame 5
   -- on levels with FLASH % 4 == 2 it would start with frame 1
   -- new baseline will be for it to always start with frame 5 to communicate earlier that the panels matched
   -- with level 8 (FLASH % 4 == 0), this condition can removed and it all validates
   -- but with level 10 (FLASH % 4 == 2), it fails on every single flash
-    and conf ~= self.sheetConfig.flash
+    --and 
+    conf ~= self.sheetConfig.flash
     -- these used to have no own animation, being entirely governed by fell_from_garbage
     -- it's possible to have them use fell_from_garbage again
     -- but that would mean 
@@ -474,7 +479,7 @@ function Panels:getDrawProps(panel, x, y, danger, dangerTimer)
     --and conf ~= self.sheetConfig.falling
     then
 
-    local oldFrame = oldDrawImplementation(self, panel, x, y, {}, panel.column, dangerTimer)
+    local oldFrame = oldDrawImplementation(self, panel, x, y, dangerCol, panel.column, dangerTimer)
     assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
   end
 
