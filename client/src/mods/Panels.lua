@@ -323,12 +323,13 @@ end
 
 
 local floor = math.floor
+local min = math.min
 
 local function getGarbageBounceProps(panelSet, panel)
   local conf = panelSet.sheetConfig.garbageBounce
   -- fell_from_garbage counts down from 12 to 0
   if panel.fell_from_garbage > 0 then
-    return conf, floor((12 - panel.fell_from_garbage) / conf.durationPerFrame) + 1
+    return conf, min(floor((12 - panel.fell_from_garbage) / conf.durationPerFrame) + 1, conf.frames)
   else
     return conf, 1
   end
@@ -401,7 +402,7 @@ function Panels:getDrawProps(panel, x, y, dangerCol, dangerTimer)
     animationName = "landing"
     conf = self.sheetConfig.landing
     -- landing always counts down from 12, ending at 0
-    frame = floor((12 - panel.timer) / conf.durationPerFrame) + 1
+    frame = min(floor((12 - panel.timer) / conf.durationPerFrame) + 1, conf.frames)
   elseif panel.state == "hovering" then
     if panel.fell_from_garbage then
       animationName = "garbageBounce"
