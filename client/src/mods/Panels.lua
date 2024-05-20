@@ -235,11 +235,17 @@ function Panels:load()
     self:loadSheets()
   end
 
+  self.quad = love.graphics.newQuad(0, 0, self.size, self.size, self.sheets[1])
+  self.displayIcons = {}
   for color = 1, 8 do
+    local canvas = love.graphics.newCanvas(self.size, self.size)
+    canvas:renderTo(function()
+      self:drawPanelFrame(color, "normal", 0, 0)
+    end)
+    self.displayIcons[color] = canvas
     --fileUtils.saveTextureToFile(self.sheets[color], self.path .. "/panel-" .. color, "png")
     self.batches[color] = love.graphics.newSpriteBatch(self.sheets[color], 100, "stream")
   end
-  self.quad = love.graphics.newQuad(0, 0, self.size, self.size, self.sheets[1])
 end
 
 
