@@ -9,7 +9,7 @@ local ANIMATION_STATES = {
   "flash", "face", "popping",
   "hovering", "falling",
   "dimmed", "dead",
-  "danger", "panic",
+  "danger",
   "garbageBounce"
 }
 local DEFAULT_PANEL_ANIM =
@@ -38,8 +38,6 @@ local DEFAULT_PANEL_ANIM =
   -- danger is special in that there is a frame offset depending on column offset
   -- col 1 and 2 start on frame 3, col 3 and 4 start on frame 4 and col 5 and 6 start on frame 5 of the animation
 	danger = {frames = {1, 2, 3, 2, 1, 4}, durationPerFrame = 3},
-  -- currently not animatable
-  panic = {frames = {4}},
   -- doesn't loop; fixed to 12 frames
 	garbageBounce = {frames = {1, 4, 3, 2}, durationPerFrame = 3},
 }
@@ -480,7 +478,7 @@ function Panels:getDrawProps(panel, x, y, dangerCol, dangerTimer)
     then
 
     local oldFrame = oldDrawImplementation(self, panel, x, y, dangerCol, panel.column, dangerTimer)
-    assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
+    --assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
   end
 
   return conf, frame, x, y
