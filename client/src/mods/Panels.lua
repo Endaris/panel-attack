@@ -2,6 +2,7 @@ local logger = require("common.lib.logger")
 local tableUtils = require("common.lib.tableUtils")
 local fileUtils = require("client.src.FileUtils")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
+local class = require("common.lib.class")
 
 local ANIMATION_STATES = {
   "normal", "landing", "swapping",

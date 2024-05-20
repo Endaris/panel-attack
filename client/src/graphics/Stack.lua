@@ -738,9 +738,9 @@ function Stack:drawAnalyticData()
   GraphicsUtil.drawRectangle("fill", x - backgroundPadding , y - backgroundPadding, width, height, 0, 0, 0, 0.5)
 
   -- Panels cleared
-  icon_width, icon_height = panels[self.panels_dir].images.classic[1][6]:getDimensions()
-  GraphicsUtil.draw(panels[self.panels_dir].images.classic[1][6], x, y, 0, iconSize / icon_width * GFX_SCALE, iconSize / icon_height * GFX_SCALE)
-  GraphicsUtil.printf(analytic.data.destroyed_panels, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
+  -- icon_width, icon_height = panels[self.panels_dir].images.classic[1][6]:getDimensions()
+  -- GraphicsUtil.draw(panels[self.panels_dir].images.classic[1][6], x, y, 0, iconSize / icon_width * GFX_SCALE, iconSize / icon_height * GFX_SCALE)
+  -- GraphicsUtil.printf(analytic.data.destroyed_panels, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
 
@@ -881,6 +881,9 @@ local function shouldFlashForFrame(frame)
 end
 
 function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
+  local panelSet = panels[self.panels_dir]
+  panelSet:prepareDraw()
+
   local metal_w, metal_h = shockGarbageImages.mid:getDimensions()
   local metall_w, metall_h = shockGarbageImages.left:getDimensions()
   local metalr_w, metalr_h = shockGarbageImages.right:getDimensions()
@@ -972,40 +975,22 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
             end
           end
         else
-          if panel.state == "matched" then
-            local flash_time = self.levelData.frameConstants.FACE - panel.timer
-            if flash_time >= 0 then
-              draw_frame = 6
-            elseif shouldFlashForFrame(flash_time) == false then
-              draw_frame = 1
-            else
-              draw_frame = 5
-            end
-          elseif panel.state == "popping" then
-            draw_frame = 6
-          elseif panel.state == "landing" then
-            draw_frame = BOUNCE_TABLE[panel.timer + 1]
-          elseif panel.state == "swapping" then
-            if panel.isSwappingFromLeft then
-              draw_x = draw_x - panel.timer * 4
-            else
-              draw_x = draw_x + panel.timer * 4
-            end
-          elseif panel.state == "dead" then
-            draw_frame = 6
-          elseif panel.state == "dimmed" then
-            draw_frame = 7
-          elseif panel.fell_from_garbage then
-            draw_frame = GARBAGE_BOUNCE_TABLE[panel.fell_from_garbage] or 1
-          elseif self.danger_col[col] then
-            draw_frame = DANGER_BOUNCE_TABLE[wrap(1, self.danger_timer + 1 + floor((col - 1) / 2), #DANGER_BOUNCE_TABLE)]
-          else
-            draw_frame = 1
+          local danger
+
+          if self.danger_col[col] then
+            if self.panels_in_top_row and self.speed ~= 0 and not self.puzzle then
+              -- panic
+                danger = true
+              else
+                -- regular danger
+                danger = false
+              end
           end
-          local panel_w, panel_h = panels[self.panels_dir].images.classic[panel.color][draw_frame]:getDimensions()
-          GraphicsUtil.drawGfxScaled(panels[self.panels_dir].images.classic[panel.color][draw_frame], draw_x, draw_y, 0, 16 / panel_w, 16 / panel_h)
+          panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.clock, danger, self.danger_timer)
         end
       end
     end
   end
+
+  panelSet:draw()
 end
