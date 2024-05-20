@@ -986,7 +986,10 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                 danger = false
               end
           end
-          panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.clock, danger, self.danger_timer)
+          -- if self.clock == 366 and panel.id == 117 then
+          --   local phi = 5
+          -- end
+          panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, danger, self.danger_timer)
         end
       end
     end
