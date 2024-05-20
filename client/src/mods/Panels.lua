@@ -2,8 +2,6 @@ local logger = require("common.lib.logger")
 local tableUtils = require("common.lib.tableUtils")
 local fileUtils = require("client.src.FileUtils")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
-local consts = require("common.engine.consts")
-local GFX_SCALE = consts.GFX_SCALE
 
 local ANIMATION_STATES = {
   "normal", "landing", "swapping",
@@ -363,9 +361,9 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
       conf = self.sheetConfig.swapping
       frame = 1--(clock / conf.durationPerFrame) % conf.frames
       if panel.isSwappingFromLeft then
-        x = x - panel.timer * 4
+        x = x - panel.timer * 12
       else
-        x = x + panel.timer * 4
+        x = x + panel.timer * 12
       end
     elseif panel.state == "popped" then
       -- draw nothing
@@ -381,7 +379,7 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
     end
 
     self.quad:setViewport((frame - 1) * self.size, (conf.row - 1) * self.size, self.size, self. size)
-    batch:add(self.quad, x * GFX_SCALE, y * GFX_SCALE, 0, self.scale)
+    batch:add(self.quad, x, y, 0, self.scale)
   end
 end
 

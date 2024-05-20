@@ -1017,7 +1017,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                 danger = false
               end
           end
-          panels[config.panels]:drawPanel(panel, draw_x, draw_y, self.clock, danger, self.danger_timer)
+          panels[config.panels]:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.clock, danger, self.danger_timer)
           --GraphicsUtil.drawGfxScaled(panels[self.panels_dir].images.classic[panel.color][draw_frame], draw_x, draw_y, 0, 16 / panel_w, 16 / panel_h)
         end
       end
