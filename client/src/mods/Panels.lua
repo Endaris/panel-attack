@@ -306,6 +306,8 @@ end
 
 
 local ceil = math.ceil
+local floor = math.floor
+local min = math.min
 -- draws the panel
 -- x, y: relative coordinates on the stack canvas
 -- clock: Stack.clock to calculate animation frames
@@ -344,19 +346,24 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
     elseif panel.state == "matched" then
       -- divide between flash and face
       -- matched timer counts down to 0
-      local flashTime = panel.frameTimes.FACE - panel.timer
-      if flashTime >= 0 then
+      if panel.timer <= panel.frameTimes.FACE then
         conf = self.sheetConfig.face
-        frame = ceil((panel.timer % conf.totalFrames) / conf.durationPerFrame)
+        local faceTime = (panel.frameTimes.FACE - panel.timer)
+        -- nonlooping animation that is counting up
+        if faceTime <= conf.totalFrames then
+          -- starting at the beginning of the timer
+          -- floor and +1 because the timer starts at 0 (could instead also +1 the timer and ceil)
+          frame = floor(faceTime / conf.durationPerFrame) + 1
+        else
+          -- and then sticking to the final frame for the remainder
+          frame = #conf.frames
+        end
       else
         conf = self.sheetConfig.flash
-        -- flash counts down to panel.frameConstants.FACE
-        -- original timer 44
-        -- panel timer 23 
-        -- frames 3
-        -- duration per frame 2
-        -- in dem fall 
-        frame = ceil((flashTime % conf.totalFrames) / conf.durationPerFrame)
+        -- matched panels flash until they counted down to panel.frameConstants.FACE
+        -- so to find out which frame of flash we're on, add face and subtract the timer
+        local flashTime = panel.frameTimes.FLASH + panel.frameTimes.FACE - panel.timer
+        frame = floor((flashTime % conf.totalFrames) / conf.durationPerFrame) + 1
       end
     elseif panel.state == "swapping" then
       conf = self.sheetConfig.swapping
