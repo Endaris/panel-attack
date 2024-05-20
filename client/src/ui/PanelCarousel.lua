@@ -11,8 +11,14 @@ function PanelCarousel:createPassenger(id)
   local stackPanel = StackPanel({alignment = "left", height = 20, hAlign = "center", vAlign = "center"})
   local panelImages = {}
   -- outlineColor
-  for i = 1, #panels[id].images.classic do
-    panelImages[i] = ImageContainer({image = panels[id].images.classic[i][1], vAlign = "center", drawBorders = false, width = 20, height = 20})
+  for i = 1, 8 do
+    -- might be worthwhile to cache these on panels
+    local canvas = love.graphics.newCanvas(panels[id].size, panels[id].size)
+    canvas:renderTo(function()
+      panels[id]:drawPanelFrame(i, "normal", 0, 0)
+    end)
+
+    panelImages[i] = ImageContainer({image = canvas, vAlign = "center", drawBorders = false, width = 20, height = 20})
   end
 
   for i = 1, self.colorCount do

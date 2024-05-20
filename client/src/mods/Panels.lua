@@ -242,6 +242,15 @@ function Panels:load()
   self.quad = love.graphics.newQuad(0, 0, self.size, self.size, self.sheets[1])
 end
 
+
+------------------------------------------
+--[[
+  Next section is only to verify 
+  that the new system's default settings 
+  are 100% identical with the current behaviour
+--]]
+------------------------------------------
+
 local function shouldFlashForFrame(frame)
   local flashFrames = 1
   flashFrames = 2 -- add config
@@ -321,6 +330,7 @@ local oldDrawImplementation = function(panelSet, panel, x, y, danger_col, col, d
   return draw_frame
 end
 
+----------------------------------------
 
 local floor = math.floor
 local min = math.min
@@ -481,21 +491,27 @@ function Panels:getDrawProps(panel, x, y, dangerCol, dangerTimer)
     --and conf ~= self.sheetConfig.falling
     then
 
-    local oldFrame = oldDrawImplementation(self, panel, x, y, dangerCol, panel.column, dangerTimer)
+    --local oldFrame = oldDrawImplementation(self, panel, x, y, dangerCol, panel.column, dangerTimer)
     --assert(DEFAULT_PANEL_ANIM[animationName].frames[frame] == oldFrame)
   end
 
   return conf, frame, x, y
 end
 
-
+function Panels:drawPanelFrame(color, state, x, y, size)
+  local sheetConfig = self.sheetConfig[state]
+  -- always draw the first frame
+  self.quad:setViewport(0, (sheetConfig.row - 1) * self.size, self.size, self.size)
+  local scale = (size or self.size) / self.size
+  GraphicsUtil.drawQuad(self.sheets[color], self.quad, x, y, 0, scale)
+end
 
 -- draws the panel
 -- x, y: relative coordinates on the stack canvas
 -- clock: Stack.clock to calculate animation frames
 -- danger: nil - no danger, false - regular danger, true - panic
 -- dangerTimer: remaining time for which the danger animation continues 
-function Panels:drawPanel(panel, x, y, danger, dangerTimer)
+function Panels:addToDraw(panel, x, y, danger, dangerTimer)
   if panel.color == 9 then
     love.graphics.draw(self.greyPanel, x, y, 0, self.scale)
   else
@@ -503,12 +519,12 @@ function Panels:drawPanel(panel, x, y, danger, dangerTimer)
     local conf, frame
     conf, frame, x, y = self:getDrawProps(panel, x, y, danger, dangerTimer)
 
-    self.quad:setViewport((frame - 1) * self.size, (conf.row - 1) * self.size, self.size, self. size)
+    self.quad:setViewport((frame - 1) * self.size, (conf.row - 1) * self.size, self.size, self.size)
     batch:add(self.quad, x, y, 0, self.scale)
   end
 end
 
-function Panels:draw()
+function Panels:drawBatch()
   for color = 1, 8 do
     love.graphics.draw(self.batches[color])
   end

@@ -738,9 +738,8 @@ function Stack:drawAnalyticData()
   GraphicsUtil.drawRectangle("fill", x - backgroundPadding , y - backgroundPadding, width, height, 0, 0, 0, 0.5)
 
   -- Panels cleared
-  -- icon_width, icon_height = panels[self.panels_dir].images.classic[1][6]:getDimensions()
-  -- GraphicsUtil.draw(panels[self.panels_dir].images.classic[1][6], x, y, 0, iconSize / icon_width * GFX_SCALE, iconSize / icon_height * GFX_SCALE)
-  -- GraphicsUtil.printf(analytic.data.destroyed_panels, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
+  panels[self.panels_dir]:drawPanelFrame(1, "face", x, y, iconSize * GFX_SCALE)
+  GraphicsUtil.printf(analytic.data.destroyed_panels, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
 
@@ -957,7 +956,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                   GraphicsUtil.drawGfxScaled(imgs.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
                 end
               elseif panel.y_offset == -1 then
-                panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE)
+                panelSet:addToDraw(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE)
               end
             elseif shouldFlashForFrame(flash_time) == false then
               if panel.metal then
@@ -973,11 +972,11 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
             end
           end
         else
-          panelSet:drawPanel(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.danger_col, self.danger_timer)
+          panelSet:addToDraw(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.danger_col, self.danger_timer)
         end
       end
     end
   end
 
-  panelSet:draw()
+  panelSet:drawBatch()
 end
