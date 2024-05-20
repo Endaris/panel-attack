@@ -881,7 +881,7 @@ local function shouldFlashForFrame(frame)
 end
 
 function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
-  panels[self.panels_dir]:prepareDraw()
+  panels[config.panels]:prepareDraw()
 
   local metal_w, metal_h = shockGarbageImages.mid:getDimensions()
   local metall_w, metall_h = shockGarbageImages.left:getDimensions()
@@ -1017,12 +1017,12 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                 danger = false
               end
           end
-          panels[self.panels_dir]:drawPanel(panel, draw_x, draw_y, self.clock, danger, self.danger_timer)
+          panels[config.panels]:drawPanel(panel, draw_x, draw_y, self.clock, danger, self.danger_timer)
           --GraphicsUtil.drawGfxScaled(panels[self.panels_dir].images.classic[panel.color][draw_frame], draw_x, draw_y, 0, 16 / panel_w, 16 / panel_h)
         end
       end
     end
   end
 
-  panels[self.panels_dir]:draw()
+  panels[config.panels]:draw()
 end

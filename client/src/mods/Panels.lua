@@ -2,6 +2,8 @@ local logger = require("common.lib.logger")
 local tableUtils = require("common.lib.tableUtils")
 local fileUtils = require("client.src.FileUtils")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
+local consts = require("common.engine.consts")
+local GFX_SCALE = consts.GFX_SCALE
 
 local ANIMATION_STATES = {
   "normal", "landing", "swapping",
@@ -234,6 +236,7 @@ function Panels:load()
   end
 
   for color = 1, 8 do
+    --fileUtils.saveTextureToFile(self.sheets[color], self.path .. "/panel-" .. color, "png")
     self.batches[color] = love.graphics.newSpriteBatch(self.sheets[color], 100, "stream")
   end
   self.quad = love.graphics.newQuad(0, 0, self.size, self.size, self.sheets[1])
@@ -329,15 +332,14 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
         if danger == false then
           conf = self.sheetConfig.danger
           -- danger_timer counts down from 18 or 15 to 0, depending on what triggered it and then wrapping back to 18
-          frame = wrap(1, dangerTimer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames)
+          frame = math.ceil(wrap(1, dangerTimer + 1 + math.floor((panel.column - 1) / 2), conf.durationPerFrame * conf.frames) / conf.durationPerFrame)
         else
           conf = self.sheetConfig.panic
           frame = (clock / conf.durationPerFrame) % conf.frames
         end
       else
         conf = self.sheetConfig.normal
-        frame = (clock / conf.durationPerFrame) % conf.frames
-        frame = ceil((clock % conf.totalFrames) / conf.durationPerFrame)
+        frame = 1
 
       end
     elseif panel.state == "matched" then
@@ -359,7 +361,7 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
       end
     elseif panel.state == "swapping" then
       conf = self.sheetConfig.swapping
-      frame = (clock / conf.durationPerFrame) % conf.frames
+      frame = 1--(clock / conf.durationPerFrame) % conf.frames
       if panel.isSwappingFromLeft then
         x = x - panel.timer * 4
       else
@@ -372,15 +374,14 @@ function Panels:drawPanel(panel, x, y, clock, danger, dangerTimer)
       conf = self.sheetConfig[panel.state]
       if panel.state == "landing" then
         -- landing counts down from 12, ending at 0
-        frame = panel.timer
+        frame = math.ceil(panel.timer / conf.durationPerFrame)
       else
-        frame = (clock / conf.durationPerFrame) % conf.frames
-        frame = ceil((clock % conf.totalFrames) / conf.durationPerFrame)
+        frame = 1--(clock / conf.durationPerFrame) % conf.frames
       end
     end
 
-    self.quad:setViewport(frame * self.size, (conf.row - 1) * self.size, self.size, self. size)
-    batch:add(self.quad, x, y, 0, self.scale)
+    self.quad:setViewport((frame - 1) * self.size, (conf.row - 1) * self.size, self.size, self. size)
+    batch:add(self.quad, x * GFX_SCALE, y * GFX_SCALE, 0, self.scale)
   end
 end
 
