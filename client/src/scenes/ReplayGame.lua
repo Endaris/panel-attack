@@ -4,6 +4,7 @@ local consts = require("common.engine.consts")
 local util = require("common.lib.util")
 local class = require("common.lib.class")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
+local prof = require("common.lib.jprof.jprof")
 
 --@module replayGame
 local ReplayGame = class(
@@ -11,7 +12,7 @@ local ReplayGame = class(
     self.frameAdvance = false
     self.playbackSpeeds = {-1, 0, 1, 2, 3, 4, 8, 16}
     self.playbackSpeedIndex = 3
-  
+
     self:load(sceneParams)
   end,
   GameBase
@@ -22,8 +23,8 @@ ReplayGame.name = "ReplayGame"
 function ReplayGame:runGame()
   local playbackSpeed = self.playbackSpeeds[self.playbackSpeedIndex]
 
-  if self.match:hasEnded() and playbackSpeed < 0 then
-    -- maybe we can rewind from death this way
+  if self.match.ended and playbackSpeed < 0 then
+    -- we can rewind from death this way
     self.match.ended = false
   end
 
@@ -108,7 +109,9 @@ function ReplayGame:drawHUD()
     if config.show_ingame_infos then
       stack:drawScore()
       stack:drawSpeed()
+      prof.push("Stack:drawMultibar")
       stack:drawMultibar()
+      prof.pop("Stack:drawMultibar")
     end
 
     -- Draw VS HUD
@@ -120,7 +123,9 @@ function ReplayGame:drawHUD()
 
     stack:drawLevel()
     if stack.analytic then
+      prof.push("Stack:drawAnalyticData")
       stack:drawAnalyticData()
+      prof.pop("Stack:drawAnalyticData")
     end
   end
 end

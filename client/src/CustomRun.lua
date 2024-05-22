@@ -1,4 +1,5 @@
 local manualGc = require("client.lib.batteries.manual_gc")
+local prof = require("common.lib.jprof.jprof")
 
 local CustomRun = {}
 CustomRun.FRAME_RATE = 1 / 60
@@ -93,6 +94,7 @@ function CustomRun.innerRun()
     return shouldQuit
   end
   mem = collectgarbage("count")
+  prof.push("frame")
 
   -- Update dt, as we'll be passing it to update
   if love.timer then
@@ -103,7 +105,9 @@ function CustomRun.innerRun()
   -- Call update and draw
   if love.update then
     local preUpdateTime = love.timer.getTime()
+    prof.push("update")
     love.update(dt) -- will pass 0 if love.timer is disabled
+    prof.pop("update")
     CustomRun.runMetrics.updateDuration = love.timer.getTime() - preUpdateTime
     prevMem = mem
     mem = collectgarbage("count")
@@ -117,7 +121,9 @@ function CustomRun.innerRun()
 
     if love.draw then
       local preDrawTime = love.timer.getTime()
+      prof.push("draw")
       love.draw()
+      prof.pop("draw")
       CustomRun.runMetrics.drawDuration = love.timer.getTime() - preDrawTime
       prevMem = mem
       mem = collectgarbage("count")
@@ -135,7 +141,9 @@ function CustomRun.innerRun()
     end
 
     local prePresentTime = love.timer.getTime()
+    prof.push("present")
     love.graphics.present()
+    prof.pop("present")
     CustomRun.runMetrics.presentDuration = love.timer.getTime() - prePresentTime
     prevMem = mem
     mem = collectgarbage("count")
@@ -143,7 +151,9 @@ function CustomRun.innerRun()
   end
 
   if love.timer then
+    prof.push("sleep")
     CustomRun.sleep()
+    prof.pop("sleep")
     mem = collectgarbage("count")
   end
 
@@ -155,6 +165,7 @@ function CustomRun.innerRun()
     mem = collectgarbage("count")
     CustomRun.runMetrics.graphMemAlloc = mem - prevMem
   end
+  prof.pop("frame")
 end
 
 -- This is a copy of the outer run loop that love uses.

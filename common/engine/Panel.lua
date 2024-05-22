@@ -1,4 +1,5 @@
 local class = require("common.lib.class")
+local prof = require("common.lib.jprof.jprof")
 
 -- clears information relating to state, matches and various stuff
 -- a true argument must be supplied to clear the chaining flag as well

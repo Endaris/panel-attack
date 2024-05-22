@@ -3,6 +3,7 @@ local tableUtils = require("common.lib.tableUtils")
 local consts = require("common.engine.consts")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
 local GFX_SCALE = consts.GFX_SCALE
+local prof = require("common.lib.jprof.jprof")
 
 function Match:matchelementOriginX()
   local x = 375 + (464) / 2
@@ -117,6 +118,7 @@ function Match:render()
   end
 
   if config.debug_mode then
+    prof.push("Match:renderDebug")
     local padding = 14
     local drawX = 500
     local drawY = -4
@@ -144,6 +146,7 @@ function Match:render()
       drawY = drawY + padding
       GraphicsUtil.printf("gameOverClock " .. self.gameOverClock, drawX, drawY)
     end
+    prof.pop("Match:renderDebug")
   end
 
   if self.isPaused then

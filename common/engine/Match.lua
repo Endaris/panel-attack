@@ -16,6 +16,7 @@ local Replay = require("common.engine.Replay")
 local Signal = require("common.lib.signal")
 local SimulatedStack = require("common.engine.SimulatedStack")
 local consts = require("common.engine.consts")
+local prof = require("common.lib.jprof.jprof")
 
 -- A match is a particular instance of the game, for example 1 time attack round, or 1 vs match
 Match =
@@ -217,7 +218,6 @@ function Match:debugAssertDivergence(stack, savedStack)
 end
 
 function Match:debugCheckDivergence()
-
   if not self.savedStackP1 or self.savedStackP1.clock ~= self.P1.clock then
     return
   end
@@ -233,10 +233,13 @@ function Match:debugCheckDivergence()
 end
 
 function Match:run()
+  prof.push("Match:hasEnded")
   if self.isPaused or self:hasEnded() then
+    prof.pop("Match:hasEnded")
     self:runGameOver()
     return
   end
+  prof.pop("Match:hasEnded")
 
   local startTime = love.timer.getTime()
 
@@ -283,7 +286,9 @@ function Match:run()
       end
     end
 
+    prof.push("Match:debugCheckDivergence")
     self:debugCheckDivergence()
+    prof.pop("Match:debugCheckDivergence")
 
     runsSoFar = runsSoFar + 1
   end
@@ -294,10 +299,13 @@ function Match:run()
   --     assert(#stack.input_buffer == 0, "Local games should always simulate all inputs")
   --   end
   -- end
-
+  prof.push("Match:hasEnded")
   if self:hasEnded() then
+    prof.push("Match:handleMatchEnd")
     self:handleMatchEnd()
+    prof.pop("Match:handleMatchEnd")
   end
+  prof.pop("Match:hasEnded")
 
   self:playCountdownSfx()
   self:playTimeLimitDepletingSfx()
@@ -632,7 +640,7 @@ function Match:hasEnded()
   if self.ended then
     return true
   end
-
+  
   if self.aborted then
     self.ended = true
     return true

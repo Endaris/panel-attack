@@ -10,6 +10,7 @@ local StageLoader = require("client.src.mods.StageLoader")
 local ModController = require("client.src.mods.ModController")
 local SoundController = require("client.src.music.SoundController")
 local UpdatingImage = require("client.src.graphics.UpdatingImage")
+local prof = require("common.lib.jprof.jprof")
 
 --@module GameBase
 -- Scene template for running any type of game instance (endless, vs-self, replays, etc.)
@@ -203,11 +204,13 @@ function GameBase:runGame(dt)
   local framesRun = 0
   self.frameInfo.currentTime = love.timer.getTime()
   self.frameInfo.expectedFrameCount = math.ceil((self.frameInfo.currentTime - self.frameInfo.startTime) * 60)
+  prof.push("Match:run")
   repeat
     self.frameInfo.frameCount = self.frameInfo.frameCount + 1
     framesRun = framesRun + 1
     self.match:run()
   until (self.frameInfo.frameCount >= self.frameInfo.expectedFrameCount)
+  prof.pop("Match:run")
   GAME.droppedFrames = GAME.droppedFrames + (framesRun - 1)
 
   self:customRun()
@@ -256,7 +259,7 @@ function GameBase:changeMusic(useDangerMusic)
 end
 
 function GameBase:update(dt)
-  if self.match:hasEnded() then
+  if self.match.ended then
     self:runGameOver()
   else
     if not self.match:hasLocalPlayer() then
@@ -274,13 +277,19 @@ function GameBase:update(dt)
 end
 
 function GameBase:draw()
+  prof.push("GameBase:draw")
   self:drawBackground()
+  prof.push("Match:render")
   self.match:render()
+  prof.pop("Match:render")
+  prof.push("GameBase:drawHUD")
   self:drawHUD()
+  prof.pop("GameBase:drawHUD")
   if self.customDraw then
     self:customDraw()
   end
   self:drawForegroundOverlay()
+  prof.pop("GameBase:draw")
 end
 
 function GameBase:drawBackground()
@@ -311,7 +320,9 @@ function GameBase:drawHUD()
           stack:drawScore()
           stack:drawSpeed()
         end
+        prof.push("Stack:drawMultibar")
         stack:drawMultibar()
+        prof.pop("Stack:drawMultibar")
       end
 
       -- Draw VS HUD
@@ -323,7 +334,9 @@ function GameBase:drawHUD()
 
       stack:drawLevel()
       if stack.analytic then
+        prof.push("Stack:drawAnalyticData")
         stack:drawAnalyticData()
+        prof.pop("Stack:drawAnalyticData")
       end
     end
     self:drawCommunityMessage()

@@ -8,7 +8,10 @@ for _, value in pairs(arg) do
     require "lldebugger"
     lldebugger.start()
   elseif value == "profile" then
-    PROFILING_ENABLED = 1
+    -- we want to optimize in a way that our weakest platforms benefit
+    -- on our weakest platform (android), jit is default disabled
+    jit.off()
+    PROF_CAPTURE = true
   elseif value == "performanceTests" then
     PERFORMANCE_TESTS_ENABLED = 1
   else

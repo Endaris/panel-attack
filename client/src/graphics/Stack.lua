@@ -2,6 +2,7 @@ require("common.lib.util")
 local GraphicsUtil = require("client.src.graphics.graphics_util")
 local TouchDataEncoding = require("common.engine.TouchDataEncoding")
 local consts = require("common.engine.consts")
+local prof = require("common.lib.jprof.jprof")
 
 local floor = math.floor
 
@@ -498,13 +499,17 @@ end
 
 -- Renders the player's stack on screen
 function Stack.render(self)
+  prof.push("Stack:render")
   if self.canvas == nil then
     return
   end
 
   self:setCanvas()
+  prof.push("Stack:drawCharacter")
   self:drawCharacter()
+  prof.pop("Stack:drawCharacter")
 
+  prof.push("Stack prep paneldraw")
   local garbageImages
   local shockGarbageImages
   if not self.garbageTarget then
@@ -520,12 +525,16 @@ function Stack.render(self)
   end
 
   local shakeOffset = self:currentShakeOffset() / GFX_SCALE
+  prof.pop("Stack prep paneldraw")
 
   self:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
 
+  prof.push("Stack:drawFrame")
   self:drawFrame()
+  prof.pop("Stack:drawFrame")
+  prof.push("Stack:drawWall")
   self:drawWall(shakeOffset, self.height)
-
+  prof.pop("Stack:drawWall")
   -- Draw the cursor
   if self:game_ended() == false then
     self:render_cursor(shakeOffset)
@@ -535,15 +544,21 @@ function Stack.render(self)
   self:drawCanvas()
 
   if self.telegraph then
+    prof.push("Telegraph:render")
     self.telegraph:render()
+    prof.pop("Telegraph:render")
   end
 
+  prof.push("Stack:drawPopEffects")
   self:drawPopEffects()
+  prof.pop("Stack:drawPopEffects")
+  prof.push("Stack:drawCards")
   self:drawCards()
+  prof.pop("Stack:drawCards")
 
   self:drawDebugPanels(shakeOffset)
   self:drawDebug()
-
+  prof.pop("Stack:render")
 end
 
 function Stack:drawRating()
@@ -860,6 +875,7 @@ local function shouldFlashForFrame(frame)
 end
 
 function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
+  prof.push("Stack:drawPanels")
   local panelSet = panels[self.panels_dir]
   panelSet:prepareDraw()
 
@@ -959,4 +975,5 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
   end
 
   panelSet:drawBatch()
+  prof.pop("Stack:drawPanels")
 end
