@@ -45,6 +45,9 @@ function CustomRun.sleep()
   if GAME and GAME.battleRoom and GAME.battleRoom.match and GAME.focused and not GAME.battleRoom.match.isPaused then
     prof.push("manual gc")
     local manualGcTime = math.max(0.001, idleTime * config.activeGarbageCollectionPercent)
+    if manualGcTime > CustomRun.FRAME_RATE then
+      error("Something went seriously wrong with idle time calculation, idleTime is " .. tostring(manualGc))
+    end
     -- Spend as much time as necessary collecting garbage, but at least 0.1ms
     -- manualGc itself has a ceiling at which it will stop
     manualGc(manualGcTime)
