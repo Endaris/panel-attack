@@ -709,6 +709,7 @@ function Stack:drawAnalyticData()
     return
   end
 
+  prof.push("analytics initial alloc")
   local analytic = self.analytic
   local backgroundPadding = 18
   local paddingToAnalytics = 16
@@ -728,24 +729,34 @@ function Stack:drawAnalyticData()
   local iconSize = 8
   local icon_width
   local icon_height
+  prof.pop("analytics initial alloc")
 
+  prof.push("analytics stats")
+  prof.push("drawBG")
   -- Background
   GraphicsUtil.drawRectangle("fill", x - backgroundPadding , y - backgroundPadding, width, height, 0, 0, 0, 0.5)
+  prof.pop("drawBG")
 
   -- Panels cleared
+  prof.push("cleared panels")
   panels[self.panels_dir]:drawPanelFrame(1, "face", x, y, iconSize * GFX_SCALE)
   GraphicsUtil.printf(analytic.data.destroyed_panels, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
+  prof.pop("cleared panels")
+
 
   -- Garbage sent
+  prof.push("garbage sent")
   icon_width, icon_height = characters[self.character].images.face:getDimensions()
   GraphicsUtil.draw(characters[self.character].images.face, x, y, 0, iconSize / icon_width * GFX_SCALE, iconSize / icon_height * GFX_SCALE)
   GraphicsUtil.printf(analytic.data.sent_garbage_lines, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
+  prof.pop("garbage sent")
 
   -- GPM
+  prof.push("gpm")
   if analytic.lastGPM == 0 or math.fmod(self.clock, 60) < self.max_runs_per_frame then
     if self.clock > 0 and (analytic.data.sent_garbage_lines > 0) then
       analytic.lastGPM = analytic:getRoundedGPM(self.clock)
@@ -756,15 +767,19 @@ function Stack:drawAnalyticData()
   GraphicsUtil.printf(analytic.lastGPM .. "/m", x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)  
 
   y = y + nextIconIncrement
+  prof.pop("gpm")
 
   -- Moves
+  prof.push("moves")
   icon_width, icon_height = self.theme.images.IMG_cursorCount:getDimensions()
   GraphicsUtil.draw(self.theme.images.IMG_cursorCount, x, y, 0, iconSize / icon_width * GFX_SCALE, iconSize / icon_height * GFX_SCALE)
   GraphicsUtil.printf(analytic.data.move_count, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
+  prof.pop("moves")
 
   -- Swaps
+  prof.push("swaps")
   if self.theme.images.IMG_swap then
     icon_width, icon_height = self.theme.images.IMG_swap:getDimensions()
     GraphicsUtil.draw(self.theme.images.IMG_swap, x, y, 0, iconSize / icon_width * GFX_SCALE, iconSize / icon_height * GFX_SCALE)
@@ -772,8 +787,10 @@ function Stack:drawAnalyticData()
   GraphicsUtil.printf(analytic.data.swap_count, x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
+  prof.pop("swaps")
 
   -- APM
+  prof.push("apm")
   if analytic.lastAPM == 0 or math.fmod(self.clock, 60) < self.max_runs_per_frame then
     if self.clock > 0 and (analytic.data.swap_count + analytic.data.move_count > 0) then
       local actionsPerMinute = (analytic.data.swap_count + analytic.data.move_count) / (self.clock / 60 / 60)
@@ -787,7 +804,11 @@ function Stack:drawAnalyticData()
   GraphicsUtil.printf(analytic.lastAPM .. "/m", x + iconToTextSpacing, y + 0, consts.CANVAS_WIDTH, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
+  prof.pop("apm")
 
+  prof.pop("analytics stats")
+
+  prof.push("analytics chain cards")
   local yCombo = y
 
   -- Clean up the chain data so we only show chains up to the highest chain the user has done
@@ -823,7 +844,9 @@ function Stack:drawAnalyticData()
       end
     end
   end
+  prof.pop("analytics chain cards")
 
+  prof.push("analytics combo cards")
   -- Clean up the combo data so we only show combos up to the highest combo the user has done
   local comboData = shallowcpy(analytic.data.used_combos)
 
@@ -854,6 +877,8 @@ function Stack:drawAnalyticData()
       end
     end
   end
+
+  prof.pop("analytics combo cards")
 end
 
 function Stack:drawMoveCount()
