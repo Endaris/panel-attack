@@ -507,7 +507,6 @@ function Stack.render(self)
   self:setCanvas()
   self:drawCharacter()
 
-  prof.push("Stack prep paneldraw")
   local garbageImages
   local shockGarbageImages
   if not self.garbageTarget then
@@ -523,7 +522,6 @@ function Stack.render(self)
   end
 
   local shakeOffset = self:currentShakeOffset() / GFX_SCALE
-  prof.pop("Stack prep paneldraw")
 
   self:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
 
@@ -913,28 +911,21 @@ end
 
 function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
   prof.push("Stack:drawPanels")
-  prof.push("preparing panel set")
   local panelSet = panels[self.panels_dir]
   panelSet:prepareDraw()
-  prof.pop("preparing panel set")
 
-  prof.push("loading metal dimensions")
   local metal_w, metal_h = shockGarbageImages.mid:getDimensions()
   local metall_w, metall_h = shockGarbageImages.left:getDimensions()
   local metalr_w, metalr_h = shockGarbageImages.right:getDimensions()
-  prof.pop("loading metal dimensions")
 
   -- Draw all the panels
   for row = 0, self.height do
-    for col = 1, self.width do
-      prof.push("initializing locals")
+    for col = self.width, 1, -1 do
       local panel = self.panels[row][col]
       local draw_x = 4 + (col - 1) * 16
       local draw_y = 4 + (11 - (row)) * 16 + self.displacement - shakeOffset
-      prof.pop("initializing locals")
       if panel.color ~= 0 and panel.state ~= "popped" then
         if panel.isGarbage then
-          prof.push("drawing garbage")
 
           -- this is the bottom right corner panel, meaning the first that will reappear when popping
           if panel.x_offset == (panel.width - 1) and panel.y_offset == 0 then
@@ -942,13 +933,11 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
             -- or if the bottom right panel already started popping
             if panel.state ~= "matched" or panel.timer <= panel.pop_time then
               if panel.metal then
-                prof.push("drawing a shock block")
-                GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
-                GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 16 * (panel.width - 1) + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
-                for i = 1, 2 * (panel.width - 1) do
-                  GraphicsUtil.drawGfxScaled(shockGarbageImages.mid, draw_x + 8 * i, draw_y, 0, 8 / metal_w, 16 / metal_h)
+                GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x - (16 * (panel.width - 1)), draw_y, 0, 8 / metall_w, 16 / metall_h)
+                GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
+                for i = 0, 2 * (panel.width - 1) - 1 do
+                  GraphicsUtil.drawGfxScaled(shockGarbageImages.mid, draw_x - 8 * i, draw_y, 0, 8 / metal_w, 16 / metal_h)
                 end
-                prof.pop("drawing a shock block")
               else
                 self:drawGarbageBlock(panel, draw_x, draw_y, garbageImages)
               end
@@ -959,7 +948,6 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
             local flash_time = panel.initial_time - panel.timer
             if flash_time >= self.levelData.frameConstants.FLASH then
               if panel.timer > panel.pop_time then
-                prof.push("drawing garbage pop")
                 if panel.metal then
                   GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
                   GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
@@ -967,17 +955,11 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                   local popped_w, popped_h = garbageImages.pop:getDimensions()
                   GraphicsUtil.drawGfxScaled(garbageImages.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
                 end
-                prof.pop("drawing garbage pop")
               elseif panel.y_offset == -1 then
-                prof.push("adding garbage pop panel")
                 panelSet:addToDraw(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE)
-                prof.pop("adding garbage pop panel")
               end
             else
-              prof.push("shouldFlashForFrame")
               if shouldFlashForFrame(flash_time) == false then
-                prof.pop("shouldFlashForFrame")
-                prof.push("drawing garbage pop again?")
                 if panel.metal then
                   GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
                   GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
@@ -985,10 +967,7 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                   local popped_w, popped_h = garbageImages.pop:getDimensions()
                   GraphicsUtil.drawGfxScaled(garbageImages.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
                 end
-                prof.pop("drawing garbage pop again?")
               else
-                prof.pop("shouldFlashForFrame")
-                prof.push("draw garbage flash")
                 local flashImage
                 if panel.metal then
                   flashImage = shockGarbageImages.flash
@@ -997,22 +976,16 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
                 end
                 local flashed_w, flashed_h = flashImage:getDimensions()
                 GraphicsUtil.drawGfxScaled(flashImage, draw_x, draw_y, 0, 16 / flashed_w, 16 / flashed_h)
-                prof.pop("draw garbage flash")
               end
             end
           end
-          prof.pop("drawing garbage")
         else
-          prof.push("adding non garbage panel")
           panelSet:addToDraw(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.danger_col, self.danger_timer)
-          prof.pop("adding non garbage panel")
         end
       end
     end
   end
 
-  prof.push("drawing panel batches")
   panelSet:drawBatch()
-  prof.pop("drawing panel batches")
   prof.pop("Stack:drawPanels")
 end
