@@ -25,7 +25,7 @@ leftover_time = maxLeftOverTime
 -- Sleeps just the right amount of time to make our next update step be one frame long.
 -- If we have leftover time that hasn't been run yet, it will sleep less to catchup.
 function CustomRun.sleep()
-
+  prof.push("sleep calc")
   local targetDelay = CustomRun.FRAME_RATE
   -- We want leftover time to be above 0 but less than a quarter frame.
   -- If it goes above that, only wait enough to get it down to that.
@@ -39,16 +39,20 @@ function CustomRun.sleep()
   local currentTime = originalTime
 
   local idleTime = targetTime - currentTime
+  prof.pop("sleep calc")
   -- actively collecting garbage is very CPU intensive
   -- only do it while a match is on-going
   if GAME and GAME.battleRoom and GAME.battleRoom.match and GAME.focused and not GAME.battleRoom.match.isPaused then
+    prof.push("manual gc")
+    local manualGcTime = math.max(0.001, idleTime * config.activeGarbageCollectionPercent)
     -- Spend as much time as necessary collecting garbage, but at least 0.1ms
     -- manualGc itself has a ceiling at which it will stop
-    manualGc(math.max(0.001, idleTime * config.activeGarbageCollectionPercent))
+    manualGc(manualGcTime)
     currentTime = love.timer.getTime()
     CustomRun.runMetrics.gcDuration = currentTime - originalTime
     originalTime = currentTime
     idleTime = targetTime - currentTime
+    prof.pop("manual gc")
   else
     CustomRun.runMetrics.gcDuration = 0
   end
@@ -57,14 +61,18 @@ function CustomRun.sleep()
   -- On most machines GC will have reduced the remaining idle time to near nothing
   -- But strong machines may exit garbage collection early and need to sleep the remaining time
   if idleTime > 0 then
+    prof.push("sleep")
     love.timer.sleep(idleTime * 0.99)
+    prof.pop("sleep")
   end
   currentTime = love.timer.getTime()
 
   -- While loop the last little bit to be more accurate
+  prof.push("busy loop")
   while currentTime < targetTime do
     currentTime = love.timer.getTime()
   end
+  prof.pop("busy loop")
 
   CustomRun.runMetrics.previousSleepEnd = currentTime
   CustomRun.runMetrics.sleepDuration = currentTime - originalTime

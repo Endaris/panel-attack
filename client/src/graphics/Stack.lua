@@ -505,9 +505,7 @@ function Stack.render(self)
   end
 
   self:setCanvas()
-  prof.push("Stack:drawCharacter")
   self:drawCharacter()
-  prof.pop("Stack:drawCharacter")
 
   prof.push("Stack prep paneldraw")
   local garbageImages
@@ -529,12 +527,8 @@ function Stack.render(self)
 
   self:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
 
-  prof.push("Stack:drawFrame")
   self:drawFrame()
-  prof.pop("Stack:drawFrame")
-  prof.push("Stack:drawWall")
   self:drawWall(shakeOffset, self.height)
-  prof.pop("Stack:drawWall")
   -- Draw the cursor
   if self:game_ended() == false then
     self:render_cursor(shakeOffset)
@@ -549,12 +543,8 @@ function Stack.render(self)
     prof.pop("Telegraph:render")
   end
 
-  prof.push("Stack:drawPopEffects")
   self:drawPopEffects()
-  prof.pop("Stack:drawPopEffects")
-  prof.push("Stack:drawCards")
   self:drawCards()
-  prof.pop("Stack:drawCards")
 
   self:drawDebugPanels(shakeOffset)
   self:drawDebug()
@@ -830,7 +820,7 @@ function Stack:drawAnalyticData()
       end
     end
   end
-  
+
   if chainCountAboveLimit > 0 then
     local cardImage = self.theme:chainImage(0)
     GraphicsUtil.draw(cardImage, x, y, 0, iconSize / icon_width, iconSize / icon_height)
@@ -876,106 +866,153 @@ local function shouldFlashForFrame(frame)
   return frame % (flashFrames * 2) < flashFrames
 end
 
+function Stack:drawGarbageBlock(bottomRightPanel, draw_x, draw_y, garbageImages)
+  local imgs = garbageImages
+  local panel = bottomRightPanel
+  local height, width = panel.height, panel.width
+  local top_y = draw_y - (height - 1) * 16
+  local use_1 = ((height - (height % 2)) / 2) % 2 == 0
+  local filler_w, filler_h = imgs.filler1:getDimensions()
+  for i = 0, height - 1 do
+    for j = 0, width - 2 do
+      local filler
+      if (use_1 or height < 3) then
+        filler = imgs.filler1
+      else
+        filler = imgs.filler2
+      end
+      GraphicsUtil.drawGfxScaled(filler, draw_x - 16 * j - 8, top_y + 16 * i, 0, 16 / filler_w, 16 / filler_h)
+      use_1 = not use_1
+    end
+  end
+  if height % 2 == 1 then
+    local face
+    if imgs.face2 and width % 2 == 1 then
+      face = imgs.face2
+    else
+      face = imgs.face
+    end
+    local face_w, face_h = face:getDimensions()
+    GraphicsUtil.drawGfxScaled(face, draw_x - 8 * (width - 1), top_y + 16 * ((height - 1) / 2), 0, 16 / face_w, 16 / face_h)
+  else
+    local face_w, face_h = imgs.doubleface:getDimensions()
+    GraphicsUtil.drawGfxScaled(imgs.doubleface, draw_x - 8 * (width - 1), top_y + 16 * ((height - 2) / 2), 0, 16 / face_w, 32 / face_h)
+  end
+  local corner_w, corner_h = imgs.topleft:getDimensions()
+  local lr_w, lr_h = imgs.left:getDimensions()
+  local topbottom_w, topbottom_h = imgs.top:getDimensions()
+  GraphicsUtil.drawGfxScaled(imgs.left, draw_x - 16 * (width - 1), top_y, 0, 8 / lr_w, (1 / lr_h) * height * 16)
+  GraphicsUtil.drawGfxScaled(imgs.right, draw_x + 8, top_y, 0, 8 / lr_w, (1 / lr_h) * height * 16)
+  GraphicsUtil.drawGfxScaled(imgs.top, draw_x - 16 * (width - 1), top_y, 0, (1 / topbottom_w) * width * 16, 2 / topbottom_h)
+  GraphicsUtil.drawGfxScaled(imgs.bot, draw_x - 16 * (width - 1), draw_y + 14, 0, (1 / topbottom_w) * width * 16, 2 / topbottom_h)
+  GraphicsUtil.drawGfxScaled(imgs.topleft, draw_x - 16 * (width - 1), top_y, 0, 8 / corner_w, 3 / corner_h)
+  GraphicsUtil.drawGfxScaled(imgs.topright, draw_x + 8, top_y, 0, 8 / corner_w, 3 / corner_h)
+  GraphicsUtil.drawGfxScaled(imgs.botleft, draw_x - 16 * (width - 1), draw_y + 13, 0, 8 / corner_w, 3 / corner_h)
+  GraphicsUtil.drawGfxScaled(imgs.botright, draw_x + 8, draw_y + 13, 0, 8 / corner_w, 3 / corner_h)
+end
+
 function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
   prof.push("Stack:drawPanels")
+  prof.push("preparing panel set")
   local panelSet = panels[self.panels_dir]
   panelSet:prepareDraw()
+  prof.pop("preparing panel set")
 
+  prof.push("loading metal dimensions")
   local metal_w, metal_h = shockGarbageImages.mid:getDimensions()
   local metall_w, metall_h = shockGarbageImages.left:getDimensions()
   local metalr_w, metalr_h = shockGarbageImages.right:getDimensions()
+  prof.pop("loading metal dimensions")
 
   -- Draw all the panels
   for row = 0, self.height do
     for col = 1, self.width do
+      prof.push("initializing locals")
       local panel = self.panels[row][col]
       local draw_x = 4 + (col - 1) * 16
       local draw_y = 4 + (11 - (row)) * 16 + self.displacement - shakeOffset
+      prof.pop("initializing locals")
       if panel.color ~= 0 and panel.state ~= "popped" then
         if panel.isGarbage then
-          local imgs = {flash = shockGarbageImages.flash}
-          if not panel.metal then
-            imgs = garbageImages
-          end
-          if panel.x_offset == 0 and panel.y_offset == 0 then
-            -- draw the entire block!
-            if panel.metal then
-              GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
-              GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 16 * (panel.width - 1) + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
-              for i = 1, 2 * (panel.width - 1) do
-                GraphicsUtil.drawGfxScaled(shockGarbageImages.mid, draw_x + 8 * i, draw_y, 0, 8 / metal_w, 16 / metal_h)
-              end
-            else
-              local height, width = panel.height, panel.width
-              local top_y = draw_y - (height - 1) * 16
-              local use_1 = ((height - (height % 2)) / 2) % 2 == 0
-              local filler_w, filler_h = imgs.filler1:getDimensions()
-              for i = 0, height - 1 do
-                for j = 1, width - 1 do
-                  GraphicsUtil.drawGfxScaled((use_1 or height < 3) and imgs.filler1 or imgs.filler2, draw_x + 16 * j - 8, top_y + 16 * i, 0, 16 / filler_w, 16 / filler_h)
-                  use_1 = not use_1
+          prof.push("drawing garbage")
+
+          -- this is the bottom right corner panel, meaning the first that will reappear when popping
+          if panel.x_offset == (panel.width - 1) and panel.y_offset == 0 then
+            -- we only need to draw the block if it is not matched 
+            -- or if the bottom right panel already started popping
+            if panel.state ~= "matched" or panel.timer <= panel.pop_time then
+              if panel.metal then
+                prof.push("drawing a shock block")
+                GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
+                GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 16 * (panel.width - 1) + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
+                for i = 1, 2 * (panel.width - 1) do
+                  GraphicsUtil.drawGfxScaled(shockGarbageImages.mid, draw_x + 8 * i, draw_y, 0, 8 / metal_w, 16 / metal_h)
                 end
-              end
-              if height % 2 == 1 then
-                local face
-                if imgs.face2 and width % 2 == 1 then
-                  face = imgs.face2
-                else
-                  face = imgs.face
-                end
-                local face_w, face_h = face:getDimensions()
-                GraphicsUtil.drawGfxScaled(face, draw_x + 8 * (width - 1), top_y + 16 * ((height - 1) / 2), 0, 16 / face_w, 16 / face_h)
+                prof.pop("drawing a shock block")
               else
-                local face_w, face_h = imgs.doubleface:getDimensions()
-                GraphicsUtil.drawGfxScaled(imgs.doubleface, draw_x + 8 * (width - 1), top_y + 16 * ((height - 2) / 2), 0, 16 / face_w, 32 / face_h)
+                self:drawGarbageBlock(panel, draw_x, draw_y, garbageImages)
               end
-              local corner_w, corner_h = imgs.topleft:getDimensions()
-              local lr_w, lr_h = imgs.left:getDimensions()
-              local topbottom_w, topbottom_h = imgs.top:getDimensions()
-              GraphicsUtil.drawGfxScaled(imgs.left, draw_x, top_y, 0, 8 / lr_w, (1 / lr_h) * height * 16)
-              GraphicsUtil.drawGfxScaled(imgs.right, draw_x + 16 * (width - 1) + 8, top_y, 0, 8 / lr_w, (1 / lr_h) * height * 16)
-              GraphicsUtil.drawGfxScaled(imgs.top, draw_x, top_y, 0, (1 / topbottom_w) * width * 16, 2 / topbottom_h)
-              GraphicsUtil.drawGfxScaled(imgs.bot, draw_x, draw_y + 14, 0, (1 / topbottom_w) * width * 16, 2 / topbottom_h)
-              GraphicsUtil.drawGfxScaled(imgs.topleft, draw_x, top_y, 0, 8 / corner_w, 3 / corner_h)
-              GraphicsUtil.drawGfxScaled(imgs.topright, draw_x + 16 * width - 8, top_y, 0, 8 / corner_w, 3 / corner_h)
-              GraphicsUtil.drawGfxScaled(imgs.botleft, draw_x, draw_y + 13, 0, 8 / corner_w, 3 / corner_h)
-              GraphicsUtil.drawGfxScaled(imgs.botright, draw_x + 16 * width - 8, draw_y + 13, 0, 8 / corner_w, 3 / corner_h)
             end
           end
+
           if panel.state == "matched" then
             local flash_time = panel.initial_time - panel.timer
             if flash_time >= self.levelData.frameConstants.FLASH then
               if panel.timer > panel.pop_time then
+                prof.push("drawing garbage pop")
                 if panel.metal then
                   GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
                   GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
                 else
-                  local popped_w, popped_h = imgs.pop:getDimensions()
-                  GraphicsUtil.drawGfxScaled(imgs.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
+                  local popped_w, popped_h = garbageImages.pop:getDimensions()
+                  GraphicsUtil.drawGfxScaled(garbageImages.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
                 end
+                prof.pop("drawing garbage pop")
               elseif panel.y_offset == -1 then
+                prof.push("adding garbage pop panel")
                 panelSet:addToDraw(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE)
-              end
-            elseif shouldFlashForFrame(flash_time) == false then
-              if panel.metal then
-                GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
-                GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
-              else
-                local popped_w, popped_h = imgs.pop:getDimensions()
-                GraphicsUtil.drawGfxScaled(imgs.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
+                prof.pop("adding garbage pop panel")
               end
             else
-              local flashed_w, flashed_h = imgs.flash:getDimensions()
-              GraphicsUtil.drawGfxScaled(imgs.flash, draw_x, draw_y, 0, 16 / flashed_w, 16 / flashed_h)
+              prof.push("shouldFlashForFrame")
+              if shouldFlashForFrame(flash_time) == false then
+                prof.pop("shouldFlashForFrame")
+                prof.push("drawing garbage pop again?")
+                if panel.metal then
+                  GraphicsUtil.drawGfxScaled(shockGarbageImages.left, draw_x, draw_y, 0, 8 / metall_w, 16 / metall_h)
+                  GraphicsUtil.drawGfxScaled(shockGarbageImages.right, draw_x + 8, draw_y, 0, 8 / metalr_w, 16 / metalr_h)
+                else
+                  local popped_w, popped_h = garbageImages.pop:getDimensions()
+                  GraphicsUtil.drawGfxScaled(garbageImages.pop, draw_x, draw_y, 0, 16 / popped_w, 16 / popped_h)
+                end
+                prof.pop("drawing garbage pop again?")
+              else
+                prof.pop("shouldFlashForFrame")
+                prof.push("draw garbage flash")
+                local flashImage
+                if panel.metal then
+                  flashImage = shockGarbageImages.flash
+                else
+                  flashImage = garbageImages.flash
+                end
+                local flashed_w, flashed_h = flashImage:getDimensions()
+                GraphicsUtil.drawGfxScaled(flashImage, draw_x, draw_y, 0, 16 / flashed_w, 16 / flashed_h)
+                prof.pop("draw garbage flash")
+              end
             end
           end
+          prof.pop("drawing garbage")
         else
+          prof.push("adding non garbage panel")
           panelSet:addToDraw(panel, draw_x * GFX_SCALE, draw_y * GFX_SCALE, self.danger_col, self.danger_timer)
+          prof.pop("adding non garbage panel")
         end
       end
     end
   end
 
+  prof.push("drawing panel batches")
   panelSet:drawBatch()
+  prof.pop("drawing panel batches")
   prof.pop("Stack:drawPanels")
 end
