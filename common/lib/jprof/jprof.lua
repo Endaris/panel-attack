@@ -1,6 +1,6 @@
+local startMem = collectgarbage("count")
 require("table.new")
 -- https://github.com/pfirsich/jprof
-
 _prefix = (...):match("(.+%.)[^%.]+$") or ""
 -- we need to make sure we have our own instance, so we can adjust settings
 local msgpack_old = package.loaded["MessagePack"]
@@ -23,13 +23,13 @@ local profiler = {}
 -- the memory consumption we determine using collectgarbage("count"))
 -- since no allocations/deallocations are triggered by them anymore
 local zoneStack = table.new(16, 0)
-local profData = table.new(10000000, 0)
+local profData = table.new(10, 0)
 local netBuffer = nil
 local profEnabled = true
 -- profMem keeps track of the amount of memory allocated by prof.push/prof.pop
 -- which is then subtracted from collectgarbage("count"),
 -- to measure the jprof-less (i.e. "real") memory consumption
-local profMem = 0
+local profMem
 
 local function getByte(n, byte)
     return bit.rshift(bit.band(n, bit.lshift(0xff, 8*byte)), 8*byte)
@@ -199,5 +199,8 @@ else
     profiler.connect = noop
     profiler.netFlush = noop
 end
+
+-- only measure after all allocations
+profMem = collectgarbage("count") - startMem
 
 return profiler
