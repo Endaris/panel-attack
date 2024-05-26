@@ -10,6 +10,7 @@ local ReplayGame = require("client.src.scenes.ReplayGame")
 --@module replayBrowser
 local ReplayBrowser = class(
   function (self, sceneParams)
+    self.keepMusic = true
     self:load(sceneParams)
   end,
   Scene
@@ -134,11 +135,11 @@ function ReplayBrowser:update()
       GAME.theme:playValidationSfx()
       setPathToParentDir()
     end
-    if input.isDown["MenuUp"] then
+    if input:isPressedWithRepeat("MenuUp") then
       GAME.theme:playMoveSfx()
       moveCursor(-1)
     end
-    if input.isDown["MenuDown"] then
+    if input:isPressedWithRepeat("MenuDown") then
       GAME.theme:playMoveSfx()
       moveCursor(1)
     end

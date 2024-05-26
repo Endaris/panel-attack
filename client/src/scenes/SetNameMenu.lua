@@ -10,6 +10,7 @@ local TextButton = require("client.src.ui.TextButton")
 -- Scene for setting the username
 local SetNameMenu = class(
   function (self, sceneParams)
+    self.keepMusic = true
     self:load(sceneParams)
   end,
   Scene
@@ -80,6 +81,7 @@ function SetNameMenu:confirmName()
     GAME.theme:playValidationSfx()
     config.name = self.nameField.value
     write_conf_file()
+    GAME.localPlayer.name = config.name
     self.nameField:unfocus()
     GAME.navigationStack:pop()
   end
