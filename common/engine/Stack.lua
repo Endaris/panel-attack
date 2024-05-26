@@ -1198,7 +1198,7 @@ function Stack.simulate(self)
     self.top_cur_row = self.height
     self:new_row()
   end
-  
+
   self:updateRiseLock()
   prof.pop("new row stuff")
 
@@ -1477,7 +1477,7 @@ function Stack.simulate(self)
   end
   prof.pop("pop from own garbage q")
 
-  prof.push("sfx crap")
+  prof.push("stack sfx")
   -- Update Sound FX
   if self:canPlaySfx() then
     if SFX_Swap_Play == 1 then
@@ -1554,7 +1554,7 @@ function Stack.simulate(self)
       SFX_Garbage_Pop_Play = nil
     end
   end
-  prof.pop("sfx crap")
+  prof.pop("stack sfx")
 
   prof.push("update times")
   self.clock = self.clock + 1
@@ -2267,44 +2267,35 @@ function Stack:makeStartingBoardPanels()
 end
 
 function Stack:checkGameOver()
-  prof.push("Stack:checkGameOver")
   if self.game_over_clock <= 0 then
     for _, gameOverCondition in ipairs(self.gameOverConditions) do
       if gameOverCondition == GameModes.GameOverConditions.NEGATIVE_HEALTH then
         if self.health <= 0 and self.shake_time <= 0 then
-          prof.pop("Stack:checkGameOver")
           return true
         elseif not self.rise_lock and self.behaviours.allowManualRaise and self.panels_in_top_row and self.manual_raise then
-          prof.pop("Stack:checkGameOver")
           return true
         end
       elseif gameOverCondition == GameModes.GameOverConditions.NO_MOVES_LEFT then
         if self.puzzle.remaining_moves <= 0 and not self:hasActivePanels() then
-          prof.pop("Stack:checkGameOver")
           return true
         end
       elseif gameOverCondition == GameModes.GameOverConditions.CHAIN_DROPPED then
         if #self.analytic.data.reached_chains == 0 and self.analytic.data.destroyed_panels > 0 then
           -- We finished matching but never made a chain -> fail
-          prof.pop("Stack:checkGameOver")
           return true
         end
         if #self.analytic.data.reached_chains > 0 and not self:hasChainingPanels() then
           -- We achieved a chain, finished chaining, but haven't won yet -> fail
-          prof.pop("Stack:checkGameOver")
           return true
         end
       end
     end
   else
-    prof.pop("Stack:checkGameOver")
     return true
   end
-  prof.pop("Stack:checkGameOver")
 end
 
 function Stack:checkGameWin()
-  prof.push("Stack:checkGameWin")
   for _, gameWinCondition in ipairs(self.gameWinConditions) do
     if gameWinCondition == GameModes.GameWinConditions.NO_MATCHABLE_PANELS then
       local panels = self.panels
@@ -2314,17 +2305,14 @@ function Stack:checkGameWin()
           local color = panels[row][col].color
           if color ~= 0 and color ~= 9 then
             matchablePanelFound = true
-            prof.pop("Stack:checkGameWin")
           end
         end
       end
       if not matchablePanelFound then
-        prof.pop("Stack:checkGameWin")
         return true
       end
     elseif gameWinCondition == GameModes.GameWinConditions.NO_MATCHABLE_GARBAGE then
       if not self:hasGarbage() then
-        prof.pop("Stack:checkGameWin")
         return true
       end
     end
@@ -2332,11 +2320,9 @@ function Stack:checkGameWin()
 
   -- match is over and we didn't die so clearly we won
   if self.match.ended and self.game_over_clock <= 0 then
-    prof.pop("Stack:checkGameWin")
     return true
   end
 
-  prof.pop("Stack:checkGameWin")
   return false
 end
 

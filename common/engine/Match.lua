@@ -233,13 +233,10 @@ function Match:debugCheckDivergence()
 end
 
 function Match:run()
-  prof.push("Match:hasEnded")
   if self.isPaused or self:hasEnded() then
-    prof.pop("Match:hasEnded")
     self:runGameOver()
     return
   end
-  prof.pop("Match:hasEnded")
 
   local startTime = love.timer.getTime()
 
@@ -286,9 +283,7 @@ function Match:run()
       end
     end
 
-    prof.push("Match:debugCheckDivergence")
-    self:debugCheckDivergence()
-    prof.pop("Match:debugCheckDivergence")
+    --self:debugCheckDivergence()
 
     runsSoFar = runsSoFar + 1
   end
@@ -299,13 +294,11 @@ function Match:run()
   --     assert(#stack.input_buffer == 0, "Local games should always simulate all inputs")
   --   end
   -- end
-  prof.push("Match:hasEnded")
   if self:hasEnded() then
     prof.push("Match:handleMatchEnd")
     self:handleMatchEnd()
     prof.pop("Match:handleMatchEnd")
   end
-  prof.pop("Match:hasEnded")
 
   self:playCountdownSfx()
   self:playTimeLimitDepletingSfx()
@@ -640,7 +633,7 @@ function Match:hasEnded()
   if self.ended then
     return true
   end
-  
+
   if self.aborted then
     self.ended = true
     return true

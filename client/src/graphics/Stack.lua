@@ -697,7 +697,6 @@ function Stack:drawAnalyticData()
     return
   end
 
-  prof.push("analytics initial alloc")
   local analytic = self.analytic
   local backgroundPadding = 18
   local paddingToAnalytics = 16
@@ -717,37 +716,28 @@ function Stack:drawAnalyticData()
   local iconSize = 24
   local icon_width
   local icon_height
-  prof.pop("analytics initial alloc")
 
-  prof.push("analytics stats")
-  prof.push("drawBG")
   local font = GraphicsUtil.getGlobalFontWithSize(GraphicsUtil.fontSize + fontIncrement)
   GraphicsUtil.setFont(font)
   -- Background
   GraphicsUtil.drawRectangle("fill", x - backgroundPadding , y - backgroundPadding, width, height, 0, 0, 0, 0.5)
-  prof.pop("drawBG")
 
   -- Panels cleared
-  prof.push("cleared panels")
   panels[self.panels_dir]:drawPanelFrame(1, "face", x, y, iconSize)
   GraphicsUtil.printf(analytic.data.destroyed_panels, x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
 
   y = y + nextIconIncrement
-  prof.pop("cleared panels")
 
 
 
   -- Garbage sent
-  prof.push("garbage sent")
   icon_width, icon_height = characters[self.character].images.face:getDimensions()
   GraphicsUtil.draw(characters[self.character].images.face, x, y, 0, iconSize / icon_width, iconSize / icon_height)
   GraphicsUtil.printf(analytic.data.sent_garbage_lines, x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
 
   y = y + nextIconIncrement
-  prof.pop("garbage sent")
 
   -- GPM
-  prof.push("gpm")
   if analytic.lastGPM == 0 or math.fmod(self.clock, 60) < self.max_runs_per_frame then
     if self.clock > 0 and (analytic.data.sent_garbage_lines > 0) then
       analytic.lastGPM = analytic:getRoundedGPM(self.clock)
@@ -758,19 +748,15 @@ function Stack:drawAnalyticData()
   GraphicsUtil.printf(analytic.lastGPM .. "/m", x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
 
   y = y + nextIconIncrement
-  prof.pop("gpm")
 
   -- Moves
-  prof.push("moves")
   icon_width, icon_height = self.theme.images.IMG_cursorCount:getDimensions()
   GraphicsUtil.draw(self.theme.images.IMG_cursorCount, x, y, 0, iconSize / icon_width, iconSize / icon_height)
   GraphicsUtil.printf(analytic.data.move_count, x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
 
   y = y + nextIconIncrement
-  prof.pop("moves")
 
   -- Swaps
-  prof.push("swaps")
   if self.theme.images.IMG_swap then
     icon_width, icon_height = self.theme.images.IMG_swap:getDimensions()
     GraphicsUtil.draw(self.theme.images.IMG_swap, x, y, 0, iconSize / icon_width, iconSize / icon_height)
@@ -778,10 +764,8 @@ function Stack:drawAnalyticData()
   GraphicsUtil.printf(analytic.data.swap_count, x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
 
   y = y + nextIconIncrement
-  prof.pop("swaps")
 
   -- APM
-  prof.push("apm")
   if analytic.lastAPM == 0 or math.fmod(self.clock, 60) < self.max_runs_per_frame then
     if self.clock > 0 and (analytic.data.swap_count + analytic.data.move_count > 0) then
       local actionsPerMinute = (analytic.data.swap_count + analytic.data.move_count) / (self.clock / 60 / 60)
@@ -795,11 +779,8 @@ function Stack:drawAnalyticData()
   GraphicsUtil.printf(analytic.lastAPM .. "/m", x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
 
   y = y + nextIconIncrement
-  prof.pop("apm")
 
-  prof.pop("analytics stats")
 
-  prof.push("analytics chain cards")
 
   -- preserve the offset for combos as chains and combos are drawn in columns side by side
   local yCombo = y
@@ -824,9 +805,7 @@ function Stack:drawAnalyticData()
     GraphicsUtil.draw(cardImage, x, y, 0, iconSize / icon_width, iconSize / icon_height)
     GraphicsUtil.printf(chainCountAboveLimit, x + iconToTextSpacing, y - 2, consts.CANVAS_WIDTH, "left", nil, 1)
   end
-  prof.pop("analytics chain cards")
 
-  prof.push("analytics combo cards")
   -- Draw the combo images
   local xCombo = x + column2Distance
 
@@ -842,7 +821,6 @@ function Stack:drawAnalyticData()
     end
   end
 
-  prof.pop("analytics combo cards")
   GraphicsUtil.setFont(GraphicsUtil.getGlobalFont())
 end
 

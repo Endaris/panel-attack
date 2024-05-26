@@ -40,11 +40,6 @@ function love.load(args)
   GAME:updateCanvasPositionAndScale(newPixelWidth, newPixelHeight)
 
   GAME:load(GAME_UPDATER)
-
-  if PROF_CAPTURE then
-    -- the GC doing things in the background can skew results so turn it off
-    manualGc(0.001, 256, true)
-  end
 end
 
 function love.focus(f)

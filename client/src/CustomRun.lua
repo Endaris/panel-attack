@@ -25,7 +25,6 @@ leftover_time = maxLeftOverTime
 -- Sleeps just the right amount of time to make our next update step be one frame long.
 -- If we have leftover time that hasn't been run yet, it will sleep less to catchup.
 function CustomRun.sleep()
-  prof.push("sleep calc")
   local targetDelay = CustomRun.FRAME_RATE
   -- We want leftover time to be above 0 but less than a quarter frame.
   -- If it goes above that, only wait enough to get it down to that.
@@ -39,18 +38,13 @@ function CustomRun.sleep()
   local currentTime = originalTime
 
   local idleTime = targetTime - currentTime
-  prof.pop("sleep calc")
   -- actively collecting garbage is very CPU intensive
   -- only do it while a match is on-going
   if GAME and GAME.battleRoom and GAME.battleRoom.match and GAME.focused and not GAME.battleRoom.match.isPaused then
     prof.push("manual gc")
-    local manualGcTime = math.max(0.001, idleTime * config.activeGarbageCollectionPercent)
-    if manualGcTime > CustomRun.FRAME_RATE then
-      error("Something went seriously wrong with idle time calculation, idleTime is " .. tostring(manualGc))
-    end
     -- Spend as much time as necessary collecting garbage, but at least 0.1ms
     -- manualGc itself has a ceiling at which it will stop
-    manualGc(manualGcTime)
+    manualGc(math.max(0.001, idleTime * config.activeGarbageCollectionPercent))
     currentTime = love.timer.getTime()
     CustomRun.runMetrics.gcDuration = currentTime - originalTime
     originalTime = currentTime

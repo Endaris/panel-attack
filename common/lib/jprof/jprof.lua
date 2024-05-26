@@ -1,3 +1,4 @@
+require("table.new")
 -- https://github.com/pfirsich/jprof
 
 _prefix = (...):match("(.+%.)[^%.]+$") or ""
@@ -21,9 +22,8 @@ local profiler = {}
 -- we do this, so table.insert/table.remove does have no (non-constant) impact on
 -- the memory consumption we determine using collectgarbage("count"))
 -- since no allocations/deallocations are triggered by them anymore
-local zoneStack = {nil, nil, nil, nil, nil, nil, nil, nil,
-                   nil, nil, nil, nil, nil, nil, nil, nil}
-local profData = {}
+local zoneStack = table.new(16, 0)
+local profData = table.new(10000000, 0)
 local netBuffer = nil
 local profEnabled = true
 -- profMem keeps track of the amount of memory allocated by prof.push/prof.pop
@@ -56,14 +56,15 @@ local function msgpackListIntoFile(list, file)
     end
 end
 
-local function addEvent(name, memCount, annot)
-    local event = {name, love.timer.getTime(), memCount, annot}
+local function addEvent(name, memCount, time, annot)
+    local event = {name, time, memCount, annot}
     if profData then
-        table.insert(profData, event)
+        profData[#profData+1] = event
+        --table.insert(profData, event)
     end
-    if netBuffer then
-        table.insert(netBuffer, event)
-    end
+    -- if netBuffer then
+    --     table.insert(netBuffer, event)
+    -- end
 end
 
 if PROF_CAPTURE then
@@ -75,8 +76,9 @@ if PROF_CAPTURE then
         end
 
         local memCount = collectgarbage("count")
-        table.insert(zoneStack, name)
-        addEvent(name, memCount - profMem, annotation)
+        --table.insert(zoneStack, name)
+        zoneStack[#zoneStack+1] = name
+        addEvent(name, memCount - profMem, love.timer.getTime(), annotation)
 
         -- Usually keeping count of the memory used by jprof is easy, but when realtime profiling is used
         -- netFlush also frees memory for garbage collection, which might happen at unknown points in time
@@ -92,17 +94,19 @@ if PROF_CAPTURE then
     function profiler.pop(name)
         if not profEnabled then return end
 
+        local t = love.timer.getTime()
         if name then
             assert(zoneStack[#zoneStack] == name,
                 ("(jprof) Top of zone stack, does not match the zone passed to prof.pop ('%s', on top: '%s')!"):format(name, zoneStack[#zoneStack]))
         end
 
         local memCount = collectgarbage("count")
-        table.remove(zoneStack)
-        addEvent("pop", memCount - profMem)
-        if profiler.socket and #zoneStack == 0 then
-            profiler.netFlush()
-        end
+        zoneStack[#zoneStack] = nil
+        --table.remove(zoneStack)
+        addEvent("pop", memCount - profMem, t)
+        -- if profiler.socket and #zoneStack == 0 then
+        --     profiler.netFlush()
+        -- end
         if profData then
             profMem = profMem + (collectgarbage("count") - memCount)
         end

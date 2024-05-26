@@ -204,13 +204,13 @@ function GameBase:runGame(dt)
   local framesRun = 0
   self.frameInfo.currentTime = love.timer.getTime()
   self.frameInfo.expectedFrameCount = math.ceil((self.frameInfo.currentTime - self.frameInfo.startTime) * 60)
-  prof.push("Match:run")
   repeat
+    prof.push("Match:run")
     self.frameInfo.frameCount = self.frameInfo.frameCount + 1
     framesRun = framesRun + 1
     self.match:run()
+    prof.pop("Match:run")
   until (self.frameInfo.frameCount >= self.frameInfo.expectedFrameCount)
-  prof.pop("Match:run")
   GAME.droppedFrames = GAME.droppedFrames + (framesRun - 1)
 
   self:customRun()

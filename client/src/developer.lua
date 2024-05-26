@@ -11,6 +11,9 @@ for _, value in pairs(arg) do
     -- we want to optimize in a way that our weakest platforms benefit
     -- on our weakest platform (android), jit is default disabled
     jit.off()
+    -- the garbage collector is a primary source of frame spikes
+    -- as there is no way to control when and how much it is running, it should be turned off for profiling
+    collectgarbage("stop")
     PROF_CAPTURE = true
   elseif value == "performanceTests" then
     PERFORMANCE_TESTS_ENABLED = 1
