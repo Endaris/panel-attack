@@ -106,11 +106,6 @@ end
 Panel =
 class(
   function(p, id, row, column, frameTimes)
-    local metatable = getmetatable(p)
-    metatable.__tostring = function(panel)
-      return "row:"..panel.row..",col:"..panel.column..",color:"..panel.color..",state:"..panel.state..",timer:"..panel.timer
-    end
-    setmetatable(p, metatable)
     clear(p, true, true)
     p.id = id
     p.row = row
@@ -122,6 +117,10 @@ class(
     p:createSignal("land")
   end
 )
+
+function Panel.__tostring(panel)
+  return "row:"..panel.row..",col:"..panel.column..",color:"..panel.color..",state:"..panel.state..",timer:"..panel.timer
+end
 
 -- for external access
 function Panel:clear(clearChaining, clearColor)
@@ -281,7 +280,7 @@ normalState.update = function(panel, panels)
             -- so we add regular hover time on top of swap time
             hoverTime = hoverTime + panel.frameTimes.HOVER
           end
-          
+
           normalState.enterHoverState(panel, panelBelow, hoverTime, panels)
         end
         -- all other transformations from normal state are actively set by stack routines:

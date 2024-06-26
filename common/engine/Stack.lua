@@ -1131,7 +1131,7 @@ function Stack.simulate(self)
   self:prep_first_row()
   local panels = self.panels
   local swapped_this_frame = nil
-  self.garbageLandedThisFrame = {}
+  table.clear(self.garbageLandedThisFrame)
   self:runCountDownIfNeeded()
 
   if self.pre_stop_time ~= 0 then
@@ -1392,13 +1392,13 @@ function Stack.simulate(self)
   prof.pop("doublecheck panels above top row")
 
 
-  prof.push("pop from own garbage q")
+  prof.push("pop from incoming garbage q")
   if self.incomingGarbage:len() > 0 then
     if self:shouldDropGarbage() then
       self:tryDropGarbage()
     end
   end
-  prof.pop("pop from own garbage q")
+  prof.pop("pop from incoming garbage q")
 
   prof.push("stack sfx")
   -- Update Sound FX
