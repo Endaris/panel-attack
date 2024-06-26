@@ -2225,6 +2225,10 @@ function Stack:shakeFramesForGarbageSize(width, height)
   end
 end
 
+function Stack:isCatchingUp()
+  return self.play_to_end
+end
+
 -- other parts of stack
 require("common.engine.checkMatches")
 -- TODO: does this stay on client or not?

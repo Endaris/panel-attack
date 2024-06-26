@@ -2,6 +2,7 @@ local logger = require("common.lib.logger")
 local tableUtils = require("common.lib.tableUtils")
 local PanelGenerator = require("common.engine.PanelGenerator")
 local consts = require("common.engine.consts")
+local Panel = require("common.engine.Panel")
 require("table.clear")
 
 -- score lookup tables
@@ -67,9 +68,13 @@ local function getMetalCount(panels)
 end
 
 local function isNewChainLink(matchingPanels)
-  return tableUtils.trueForAny(matchingPanels, function(panel)
-    return panel.chaining
-  end)
+  for _, panel in ipairs(matchingPanels) do
+    if panel.chaining then
+      return true
+    end
+  end
+
+  return false
 end
 
 local function getOnScreenCount(stackHeight, panels)
