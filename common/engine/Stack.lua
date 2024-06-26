@@ -2041,31 +2041,31 @@ end
 
 function Stack.updateActivePanels(self)
   self.n_prev_active_panels = self.n_active_panels
-  self.n_active_panels = #self:getActivePanels()
+  self.n_active_panels = self:getActivePanelCount()
 end
 
-function Stack.getActivePanels(self)
-  local activePanels = {}
+function Stack.getActivePanelCount(self)
+  local count = 0
 
   for row = 1, self.height do
     for col = 1, self.width do
       local panel = self.panels[row][col]
       if panel.isGarbage then
         if panel.state ~= "normal" then
-          activePanels[#activePanels+1] = panel
+          count = count + 1
         end
       else
         if panel.color ~= 0
         -- dimmed is implicitly filtered by only checking in row 1 and up
         and panel.state ~= "normal"
         and panel.state ~= "landing" then
-          activePanels[#activePanels+1] = panel
+          count = count + 1
         end
       end
     end
   end
 
-  return activePanels
+  return count
 end
 
 function Stack.updateRiseLock(self)
