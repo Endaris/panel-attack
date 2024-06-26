@@ -367,6 +367,7 @@ function Stack.rollbackCopy(source, other)
     other.currentGarbageDropColumnIndexes[garbageWidth] = source.currentGarbageDropColumnIndexes[garbageWidth]
   end
 
+  prof.push("rollback copy panels")
   local width = source.width or other.width
   local height_to_cpy = #source.panels
   other.panels = other.panels or {}
@@ -407,7 +408,9 @@ function Stack.rollbackCopy(source, other)
   for i = height_to_cpy + 1, #other.panels do
     other.panels[i] = nil
   end
+  prof.pop("rollback copy panels")
 
+  prof.push("rollback copy the rest")
   other.countdown_timer = source.countdown_timer
   other.clock = source.clock
   other.game_stopwatch = source.game_stopwatch
@@ -444,8 +447,11 @@ function Stack.rollbackCopy(source, other)
   other.metal_panels_queued = source.metal_panels_queued
   other.panels_cleared = source.panels_cleared
   other.danger_timer = source.danger_timer
-  other.analytic = deepcpy(source.analytic)
   other.game_over_clock = source.game_over_clock
+  prof.pop("rollback copy the rest")
+  prof.push("rollback copy analytics")
+  other.analytic = deepcpy(source.analytic)
+  prof.pop("rollback copy analytics")
 
   return other
 end
@@ -529,16 +535,25 @@ function Stack.saveForRollback(self)
   self.garbageTarget = nil
   self.rollbackCopies = nil
   self:remove_extra_rows()
+  prof.push("Stack.rollbackCopy")
   rollbackCopies[self.clock] = Stack.rollbackCopy(self)
+  prof.pop("Stack.rollbackCopy")
+  prof.push("incomingGarbage:rollbackCopy")
   self.incomingGarbage:rollbackCopy(self.clock)
+  prof.pop("incomingGarbage:rollbackCopy")
+  prof.push("outgoingGarbage:rollbackCopy")
   if self.outgoingGarbage then
     self.outgoingGarbage:rollbackCopy(self.clock)
   end
+  prof.pop("outgoingGarbage:rollbackCopy")
+
   self.rollbackCopies = rollbackCopies
   self.opponentStack = opponentStack
   self.garbageTarget = attackTarget
+  prof.push("delete rollback copy")
   local deleteFrame = self.clock - MAX_LAG - 1
   self:deleteRollbackCopy(deleteFrame)
+  prof.pop("delete rollback copy")
   prof.pop("Stack:saveForRollback")
 end
 
