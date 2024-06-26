@@ -2,6 +2,7 @@ local logger = require("common.lib.logger")
 local tableUtils = require("common.lib.tableUtils")
 local PanelGenerator = require("common.engine.PanelGenerator")
 local consts = require("common.engine.consts")
+require("table.clear")
 
 -- score lookup tables
 local SCORE_COMBO_PdP64 = {} --size 40
@@ -157,13 +158,16 @@ function Stack:getMatchingPanels()
     end
   end
 
+  if #candidatePanels == 0 then
+    -- early exit to not allocate extra memory
+    return candidatePanels
+  end
+
   local matchingPanels = {}
-  local verticallyConnected
-  local horizontallyConnected
+  local verticallyConnected = {}
+  local horizontallyConnected = {}
   local panel
   for i = 1, #candidatePanels do
-    verticallyConnected = {}
-    horizontallyConnected = {}
     -- check in all 4 directions until we found a panel of a different color
     -- below
     for row = candidatePanels[i].row - 1, 1, -1 do
@@ -225,14 +229,10 @@ function Stack:getMatchingPanels()
         end
       end
     end
-    
+
     -- Clear out the tables for the next iteration
-    for k, _ in ipairs(verticallyConnected) do 
-      verticallyConnected[k] = nil 
-    end
-    for k, _ in ipairs(horizontallyConnected) do 
-      horizontallyConnected[k] = nil 
-    end
+    table.clear(verticallyConnected)
+    table.clear(horizontallyConnected)
   end
 
   for i = 1, #matchingPanels do
