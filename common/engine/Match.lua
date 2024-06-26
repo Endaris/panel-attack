@@ -735,7 +735,7 @@ function Match:checkAborted()
       end
     else
       -- if this is not last alive and no desync that means we expect EVERY stack to be game over
-      if tableUtils.trueForAll(self.stacks, Stack.game_ended) then
+      if not tableUtils.trueForAll(self.stacks, Stack.game_ended) then
         -- someone didn't lose so this got aborted (e.g. through a pause -> leave)
         self.aborted = true
         self.winners = {}
