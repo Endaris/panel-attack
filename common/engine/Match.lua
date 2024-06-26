@@ -254,7 +254,7 @@ function Match:run()
   end
 
   local runsSoFar = 0
-  while tableUtils.trueForAny(checkRun, function(b) return b end) do
+  while tableUtils.contains(checkRun, true) do
     for i, stack in ipairs(self.stacks) do
       if stack and self:shouldRun(stack, runsSoFar) then
         stack:run()

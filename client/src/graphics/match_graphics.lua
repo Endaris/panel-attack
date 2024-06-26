@@ -88,7 +88,6 @@ local function isRollbackActive(stack)
 end
 
 function Match:render()
-  prof.push("match render 1")
   if config.show_fps then
     GraphicsUtil.print("Dropped Frames: " .. GAME.droppedFrames, 1, 12)
   end
@@ -156,8 +155,6 @@ function Match:render()
     self:draw_pause()
   end
 
-  prof.pop("match render 1")
-  prof.push("match render 2")
   if not self.isPaused or self.renderDuringPause then
     for _, stack in ipairs(self.stacks) do
       -- don't render stacks that only have an attack engine
@@ -175,7 +172,6 @@ function Match:render()
 
     self:drawTimer()
   end
-  prof.pop("match render 2")
 end
 
 -- a helper function for tests
