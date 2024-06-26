@@ -694,17 +694,17 @@ function Panel.switch(panel1, panel2, panels)
   local colDiff = panel1.column - panel2.column
   assert(math.abs(rowDiff + colDiff) == 1)
 
-  local coordinates1 = { row = panel1.row, column = panel1.column}
-  local coordinates2 = { row = panel2.row, column = panel2.column}
+  local p1row = panel1.row
+  local p1col = panel1.column
 
   -- update the coordinates on the panels
-  panel1.row = coordinates2.row
-  panel1.column = coordinates2.column
-  panel2.row = coordinates1.row
-  panel2.column = coordinates1.column
+  panel1.row = panel2.row
+  panel1.column = panel2.column
+  panel2.row = p1row
+  panel2.column = p1col
 
-  panels[coordinates1.row][coordinates1.column] = panel2
-  panels[coordinates2.row][coordinates2.column] = panel1
+  panels[panel2.row][panel2.column] = panel2
+  panels[panel1.row][panel1.column] = panel1
 end
 
 -- function used by the stack to determine whether there are panels in a row (read: the top row)

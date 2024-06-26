@@ -1091,7 +1091,7 @@ function Stack.updatePanels(self)
   if self.do_countdown then
     return
   end
-  
+
   self.shake_time_on_frame = 0
   self.popSizeThisFrame = "small"
   for row = 1, #self.panels do
