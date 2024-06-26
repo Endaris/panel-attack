@@ -149,10 +149,14 @@ function Stack:checkMatches()
   self:clearChainingFlags()
 end
 
+local candidatePanels = table.new(144, 0)
+local verticallyConnected = table.new(11, 0)
+local horizontallyConnected = table.new(5, 0)
+
 -- returns a table of panels that are forming matches on this frame
 function Stack:getMatchingPanels()
+  local matchingPanels = {}
   local panels = self.panels
-  local candidatePanels = {}
 
   for row = 1, self.height do
     for col = 1, self.width do
@@ -163,57 +167,49 @@ function Stack:getMatchingPanels()
     end
   end
 
-  if #candidatePanels == 0 then
-    -- early exit to not allocate extra memory
-    return candidatePanels
-  end
-
-  local matchingPanels = {}
-  local verticallyConnected = {}
-  local horizontallyConnected = {}
   local panel
-  for i = 1, #candidatePanels do
+  for _, candidatePanel in ipairs(candidatePanels) do
     -- check in all 4 directions until we found a panel of a different color
     -- below
-    for row = candidatePanels[i].row - 1, 1, -1 do
-      panel = panels[row][candidatePanels[i].column]
-      if panel.color == candidatePanels[i].color  and canMatch(panel) then
+    for row = candidatePanel.row - 1, 1, -1 do
+      panel = panels[row][candidatePanel.column]
+      if panel.color == candidatePanel.color  and canMatch(panel) then
         verticallyConnected[#verticallyConnected + 1] = panel
       else
         break
       end
     end
     -- above
-    for row = candidatePanels[i].row + 1, self.height do
-      panel = panels[row][candidatePanels[i].column]
-      if panel.color == candidatePanels[i].color  and canMatch(panel) then
+    for row = candidatePanel.row + 1, self.height do
+      panel = panels[row][candidatePanel.column]
+      if panel.color == candidatePanel.color  and canMatch(panel) then
         verticallyConnected[#verticallyConnected + 1] = panel
       else
         break
       end
     end
     -- to the left
-    for column = candidatePanels[i].column - 1, 1, -1 do
-      panel = panels[candidatePanels[i].row][column]
-      if panel.color == candidatePanels[i].color  and canMatch(panel) then
+    for column = candidatePanel.column - 1, 1, -1 do
+      panel = panels[candidatePanel.row][column]
+      if panel.color == candidatePanel.color  and canMatch(panel) then
         horizontallyConnected[#horizontallyConnected + 1] = panel
       else
         break
       end
     end
     -- to the right
-    for column = candidatePanels[i].column + 1, self.width do
-      panel = panels[candidatePanels[i].row][column]
-      if panel.color == candidatePanels[i].color and canMatch(panel) then
+    for column = candidatePanel.column + 1, self.width do
+      panel = panels[candidatePanel.row][column]
+      if panel.color == candidatePanel.color and canMatch(panel) then
         horizontallyConnected[#horizontallyConnected + 1] = panel
       else
         break
       end
     end
 
-    if (#verticallyConnected >= 2 or #horizontallyConnected >= 2) and not candidatePanels[i].matching then
-      matchingPanels[#matchingPanels + 1] = candidatePanels[i]
-      candidatePanels[i].matching = true
+    if (#verticallyConnected >= 2 or #horizontallyConnected >= 2) and not candidatePanel.matching then
+      matchingPanels[#matchingPanels + 1] = candidatePanel
+      candidatePanel.matching = true
     end
 
     if #verticallyConnected >= 2 then
@@ -239,6 +235,8 @@ function Stack:getMatchingPanels()
     table.clear(verticallyConnected)
     table.clear(horizontallyConnected)
   end
+
+  table.clear(candidatePanels)
 
   for i = 1, #matchingPanels do
     if matchingPanels[i].state == "hovering" then
