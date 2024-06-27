@@ -27,6 +27,8 @@ function love.load()
 end
 
 local tests = {
+  "common.tests.engine.StackRollbackReplayTests",
+  "common.tests.engine.RollbackBufferTests",
   "client.tests.QueueTests",
   "client.tests.ServerQueueTests",
   --"client.tests.StackGraphicsTests",
@@ -40,7 +42,6 @@ local tests = {
   "common.tests.engine.PuzzleTests",
   "common.tests.engine.ReplayTests",
   "common.tests.engine.StackReplayTests",
-  "common.tests.engine.StackRollbackReplayTests",
   "common.tests.engine.StackTouchReplayTests",
   -- disabled for testLauncher because it needs the client love callbacks
   --"common.tests.lib.InputTests",

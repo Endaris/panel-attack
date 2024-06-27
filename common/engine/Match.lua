@@ -217,17 +217,17 @@ function Match:debugAssertDivergence(stack, savedStack)
 end
 
 function Match:debugCheckDivergence()
-  if not self.savedStackP1 or self.savedStackP1.clock ~= self.P1.clock then
+  if not self.savedStackP1 or self.savedStackP1.clock ~= self.stacks[1].clock then
     return
   end
-  self:debugAssertDivergence(self.P1, self.savedStackP1)
+  self:debugAssertDivergence(self.stacks[1], self.savedStackP1)
   self.savedStackP1 = nil
 
-  if not self.savedStackP2 or self.savedStackP2.clock ~= self.P2.clock then
+  if not self.savedStackP2 or self.savedStackP2.clock ~= self.stacks[2].clock then
     return
   end
 
-  self:debugAssertDivergence(self.P2, self.savedStackP2)
+  self:debugAssertDivergence(self.stacks[2], self.savedStackP2)
   self.savedStackP2 = nil
 end
 
@@ -293,7 +293,7 @@ function Match:run()
       end
     end
 
-    --self:debugCheckDivergence()
+    self:debugCheckDivergence()
 
     runsSoFar = runsSoFar + 1
   end
