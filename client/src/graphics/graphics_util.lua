@@ -143,11 +143,11 @@ local maxQuadPool = 100
 function GraphicsUtil:newRecycledQuad(x, y, width, height, sw, sh)
   local result = nil
   if #self.quadPool == 0 then
-    result = love.graphics.newQuad(x, y, width, height, sw, sh)
+    result = love.graphics.newQuad(x, y, width, height, sw or width, sh or height)
   else
     result = self.quadPool[#self.quadPool]
     self.quadPool[#self.quadPool] = nil
-    result:setViewport(x, y, width, height, sw, sh)
+    result:setViewport(x, y, width, height, sw or width, sh or height)
   end
   
   return result

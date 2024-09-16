@@ -26,8 +26,6 @@ local StackBase = class(function(self, args)
   self.game_over_clock = -1 -- the exact clock frame the player lost, -1 while alive
   Signal.turnIntoEmitter(self)
   self:createSignal("dangerMusicChanged")
-  self:createSignal("hurt")
-  self:createSignal("attackSent")
 
   -- rollback
   self.rollbackCopies = {}
@@ -40,7 +38,8 @@ local StackBase = class(function(self, args)
   self.gfxScale = 3
   self.canvas = love.graphics.newCanvas(104 * self.gfxScale, 204 * self.gfxScale, {dpiscale = GAME:newCanvasSnappedScale()})
   self.portraitFade = config.portrait_darkness / 100 -- will be set back to 0 if count down happens
-  self.healthQuad = GraphicsUtil:newRecycledQuad(0, 0, themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight(), themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight())
+  local imgWidth, imgHeight = themes[config.theme].images.IMG_healthbar:getDimensions()
+  self.healthQuad = GraphicsUtil:newRecycledQuad(0, 0, imgWidth, imgHeight, imgWidth, imgHeight)
 end)
 
 -- Provides the X origin to draw an element of the stack
@@ -407,6 +406,10 @@ end
 
 function StackBase:runGameOver()
   error("did not implement runGameOver")
+end
+
+function StackBase:initializeGraphics()
+  -- overwrite this function to add extra initialization
 end
 
 return StackBase

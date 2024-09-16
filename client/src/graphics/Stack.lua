@@ -997,3 +997,12 @@ function Stack:drawPanels(garbageImages, shockGarbageImages, shakeOffset)
   panelSet:drawBatch()
   prof.pop("Stack:drawPanels")
 end
+
+function Stack:initializeGraphics()
+  self.multi_prestopQuad = GraphicsUtil:newRecycledQuad(0, 0, self.theme.images.IMG_multibar_prestop_bar:getDimensions())
+  self.multi_stopQuad = GraphicsUtil:newRecycledQuad(0, 0, self.theme.images.IMG_multibar_stop_bar:getDimensions())
+  self.multi_shakeQuad = GraphicsUtil:newRecycledQuad(0, 0, self.theme.images.IMG_multibar_shake_bar:getDimensions())
+  self.multiBarFrameCount = self:calculateMultibarFrameCount()
+
+  characters[self.character]:initializeStackAnimation(self)
+end

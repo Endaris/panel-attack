@@ -348,6 +348,50 @@ function Character.graphics_uninit(self)
   self.telegraph_garbage_images = {}
 end
 
+function Character:initializeStackAnimation(stack)
+  local character = characters[stack.character]
+  if character.battleAnimations then
+    stack.battleAnimations = {}
+    for name, set in pairs(character.battleAnimations) do
+      local anim = set:clone()
+      anim:stop()
+      anim:setSwitchFunction(
+        function (s, state)
+          local switch
+          local finish = false
+          if stack.match.ended then
+            switch = (stack.game_over_clock <= 0 and "win") or "lose"
+          elseif state == "hurt" and stack.shake_time > 0 then
+            switch = "hurt"
+          elseif state == "attack" then
+            switch = "attack"
+          elseif (stack.danger)then
+            switch = "danger"
+            finish = anim.currentAnim ~= "normal"
+          else
+            switch = "normal"
+            finish = true
+          end
+          if anim.animations[switch] ~= nil then
+            s:switchAnimation(switch, finish)
+          end
+        end
+      )
+      local landFunc = function(animation, stack, shake)
+        animation:switchAnimation("hurt", false)
+      end
+      local matchedFunc = function(animation, stack, attackGfxOrigin, isChainLink, comboSize, metalCount, garbagePanelCount)
+        if isChainLink or comboSize > 3 or metalCount > 1 then
+          animation:switchAnimation("attack", false)
+        end
+      end
+      stack.battleAnimations[name] = anim
+      stack:connectSignal("garbageLanded", stack.battleAnimations[name], landFunc)
+      stack:connectSignal("matched", stack.battleAnimations[name], matchedFunc)
+    end
+  end
+end
+
 
 
 -- SOUND
