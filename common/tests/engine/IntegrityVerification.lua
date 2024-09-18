@@ -6,7 +6,11 @@ local Replay = require("common.engine.Replay")
 local Match = require("common.engine.Match")
 local tableUtils = require("common.lib.tableUtils")
 
-local verifier = { faulty = {} }
+local verifier = { faulty = {}, processed = 0}
+
+function verifier.overrideEngineVersion(version)
+  verifier.versionOverride = version
+end
 
 function verifier.bulkVerifyReplays(replayPath, outputPath)
   local items = love.filesystem.getDirectoryItems(replayPath)
@@ -16,8 +20,13 @@ function verifier.bulkVerifyReplays(replayPath, outputPath)
     if fileInfo.type == "directory" then
       verifier.bulkVerifyReplays(filePath, outputPath)
     elseif fileInfo.type == "file" then
-      local json = fileUtils.readJsonFile(filePath)
-      local success, replay = Replay.load(json)
+      local replayTable = fileUtils.readJsonFile(filePath)
+      -- server replays do not save version number and the internal processor assumes v046 in that case which may be wrong
+      -- so we can override to correct the used engine version here
+      if verifier.versionOverride then
+        replayTable.engineVersion = verifier.versionOverride
+      end
+      local success, replay = Replay.load(replayTable)
       if not success then
         -- not sure, probably error or use a separate dir in the output path?
       else
@@ -26,11 +35,18 @@ function verifier.bulkVerifyReplays(replayPath, outputPath)
           local verified, winnerIndex, clock = verifier.verifyReplay(replay)
           if not verified then
             verifier.faulty[#verifier.faulty+1] = {
-              path = filePath,
+              path = item,
               reason = "Replay stopped running at " .. clock .. " with winner " .. winnerIndex
                   ..   " but should have stopped at " .. replay.duration .. " with winner " .. (replay.winnerIndex or "unknown")
             }
+            love.filesystem.write(outputPath .. "/" .. item, json.encode(replayTable))
           end
+
+          -- verification can run for a very long time so removing files prevents us from checking dupes if running in parts
+          love.filesystem.remove(filePath)
+
+          verifier.processed = verifier.processed + 1
+          coroutine.yield()
         end
       end
     end
@@ -39,8 +55,13 @@ end
 
 function verifier.verifyReplay(replay)
   local match = Match.createFromReplay(replay, false)
+  match:start()
 
-  while match.winners == nil and match.clock < replay.duration do
+  -- the extra clock safeguards against getting stuck if for some reason the match fails to advance for multiple runs
+  -- technically it should never get stuck
+  local clock = 0
+  while match.winners == nil and match.clock < replay.duration and match.clock - clock > -5 do
+    clock = clock + 1
     match:run()
   end
 
